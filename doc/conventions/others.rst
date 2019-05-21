@@ -76,12 +76,12 @@ Thermal loss channel
 .. admonition:: Definition
     :class: defn
 
-    Thermal loss is implemented by coupling mode :math:`\a` to another bosonic mode :math:`\hat{b}` prepared in the thermal state :math:`\ket{\bar{n}}`, by using the following transformation
+    Thermal loss is implemented by coupling mode :math:`\a` to another bosonic mode :math:`\hat{b}` prepared in the thermal state :math:`\rho(\bar{n})`, by using the following transformation
 
     .. math::
        \a \to \sqrt{T} \a+\sqrt{1-T} \hat{b}
 
-    and then tracing it out. Here, :math:`T` is the *energy* transmissivity. For :math:`T = 0` the state is mapped to the thermal state :math:`\ket{\bar{n}}` with mean photon number :math:`\bar{n}`, and for :math:`T=1` one has the identity map.
+    and then tracing it out. Here, :math:`T` is the *energy* transmissivity. For :math:`T = 0` the state is mapped to the thermal state :math:`\rho(\bar{n})` with mean photon number :math:`\bar{n}`, and for :math:`T=1` one has the identity map.
 
 .. tip::
 
