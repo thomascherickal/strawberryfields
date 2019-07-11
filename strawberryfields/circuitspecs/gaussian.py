@@ -20,9 +20,6 @@ class GaussianSpecs(CircuitSpecs):
 
     short_name = 'gaussian'
     modes = None
-    local = True
-    remote = True
-    interactive = True
 
     primitives = {
         # meta operations

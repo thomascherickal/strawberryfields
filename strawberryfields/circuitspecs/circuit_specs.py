@@ -58,34 +58,6 @@ class CircuitSpecs(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def local(self) -> bool:
-        """Whether the circuit class can be executed locally (i.e., within a simulator).
-
-        Returns:
-            bool: ``True`` if the circuit class supports local execution
-        """
-
-    @property
-    @abc.abstractmethod
-    def remote(self) -> bool:
-        """Whether the circuit class supports remote execution.
-
-        Returns:
-            bool: ``True`` if the circuit class supports remote execution
-        """
-
-    @property
-    @abc.abstractmethod
-    def interactive(self) -> bool:
-        """Whether the circuits in the class can be executed interactively, that is,
-        the registers in the circuit are not reset between engine executions.
-
-        Returns:
-            bool: ``True`` if the circuit supports interactive use
-        """
-
-    @property
-    @abc.abstractmethod
     def primitives(self) -> Set[str]:
         """The primitive set of quantum operations directly supported
         by the circuit class.

@@ -333,9 +333,6 @@ class TestValidation:
         class DummyCircuit(CircuitSpecs):
             """A circuit with 2 modes"""
             modes = 2
-            remote = False
-            local = True
-            interactive = True
             primitives = {'S2gate', 'Interferometer'}
             decompositions = set()
 
@@ -354,9 +351,6 @@ class TestValidation:
         class DummyCircuit(CircuitSpecs):
             """A circuit spec with no decompositions"""
             modes = None
-            remote = False
-            local = True
-            interactive = True
             primitives = {'S2gate', 'Interferometer'}
             decompositions = set()
 
@@ -382,9 +376,6 @@ class TestValidation:
 
         class DummyCircuit(CircuitSpecs):
             modes = None
-            remote = False
-            local = True
-            interactive = True
             primitives = {'S2gate', 'Interferometer', 'BSgate', 'Sgate'}
             decompositions = {'S2gate': {}}
 
@@ -414,9 +405,6 @@ class TestValidation:
 
         class DummyCircuit(CircuitSpecs):
             modes = None
-            remote = False
-            local = True
-            interactive = True
             primitives = {'Rgate', 'Interferometer'}
             decompositions = {'Rgate': {}}
 
@@ -492,9 +480,6 @@ class TestValidation:
 
         class DummyCircuit(CircuitSpecs):
             modes = None
-            remote = False
-            local = True
-            interactive = True
             primitives = {'Sgate', 'BSgate', 'Dgate', 'MeasureFock'}
             decompositions = set()
 
@@ -532,9 +517,6 @@ class TestValidation:
 
         class DummyCircuit(CircuitSpecs):
             modes = None
-            remote = False
-            local = True
-            interactive = True
             primitives = {'Sgate', 'BSgate', 'Dgate', 'MeasureFock'}
             decompositions = set()
 

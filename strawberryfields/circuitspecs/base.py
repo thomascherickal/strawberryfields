@@ -22,9 +22,6 @@ class BaseSpecs(CircuitSpecs):
 
     short_name = 'base'
     modes = None
-    remote = False
-    local = True
-    interactive = True
 
     primitives = {
         # meta operations

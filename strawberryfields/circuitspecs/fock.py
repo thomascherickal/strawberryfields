@@ -20,9 +20,6 @@ class FockSpecs(CircuitSpecs):
 
     short_name = 'fock'
     modes = None
-    local = True
-    remote = True
-    interactive = True
 
     primitives = {
         # meta operations

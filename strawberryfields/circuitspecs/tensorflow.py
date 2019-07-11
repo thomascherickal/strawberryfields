@@ -20,9 +20,6 @@ class TFSpecs(CircuitSpecs):
 
     short_name = 'tf'
     modes = None
-    local = True
-    remote = False
-    interactive = True
 
     primitives = {
         # meta operations

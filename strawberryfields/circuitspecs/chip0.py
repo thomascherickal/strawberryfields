@@ -22,9 +22,6 @@ class Chip0Specs(CircuitSpecs):
 
     short_name = 'chip0'
     modes = 4
-    remote = True
-    local = True
-    interactive = True
 
     primitives = {"S2gate", "Interferometer", "MeasureFock", "Rgate", "BSgate"}
 
