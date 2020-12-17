@@ -38,6 +38,7 @@ WIRE_TERMINATOR = r"\\" + "\n"
 CIRCUIT_BODY_TERMINATOR = "}\n"
 CIRCUIT_BODY_START = " {" + "\n"
 BEGIN_DOCUMENT = r"\begin{document}"
+EMPTY_PAGESTYLE = r"\pagestyle{empty}"
 DOCUMENT_CLASS = r"\documentclass{article}"
 QCIRCUIT_PACKAGE = r"\usepackage{qcircuit}"
 CIRCUIT_START = r"\Qcircuit"
@@ -45,7 +46,7 @@ COLUMN_SPACING = "@C={0}"
 ROW_SPACING = "@R={0}"
 QUANTUM_WIRE = r"\qw"
 INIT_DOCUMENT = (
-    DOCUMENT_CLASS + "\n" + QCIRCUIT_PACKAGE + "\n" + BEGIN_DOCUMENT + "\n" + CIRCUIT_START
+    DOCUMENT_CLASS + "\n" + EMPTY_PAGESTYLE + "\n" + QCIRCUIT_PACKAGE + "\n" + BEGIN_DOCUMENT + "\n" + CIRCUIT_START
 )
 
 
@@ -187,7 +188,7 @@ class TestEngineIntegration:
             ops.Pgate(1) | (q[0])
             ops.Rgate(1) | (q[0])
             ops.Sgate(1) | (q[0])
-            ops.Dgate(1) | (q[0])
+            ops.Dgate(1, 0) | (q[0])
 
         for op in prog.circuit:
             method, mode = drawer._gate_from_operator(op)
@@ -225,7 +226,7 @@ class TestEngineIntegration:
             ops.Pgate(1) | (q[0])
             ops.Rgate(1) | (q[0])
             ops.Sgate(1) | (q[0])
-            ops.Dgate(1) | (q[0])
+            ops.Dgate(1, 0) | (q[0])
 
         for op in prog.circuit:
             drawer.parse_op(op)
@@ -265,6 +266,7 @@ class TestEngineIntegration:
 
         fourier_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -289,6 +291,7 @@ class TestEngineIntegration:
 
         x_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -313,6 +316,7 @@ class TestEngineIntegration:
 
         x_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -338,6 +342,7 @@ class TestEngineIntegration:
 
         xx_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -363,6 +368,7 @@ class TestEngineIntegration:
 
         x_z_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -388,6 +394,7 @@ class TestEngineIntegration:
 
         x_0_z_1_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -412,6 +419,7 @@ class TestEngineIntegration:
 
         z_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -436,6 +444,7 @@ class TestEngineIntegration:
 
         z_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -461,6 +470,7 @@ class TestEngineIntegration:
 
         zz_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -485,6 +495,7 @@ class TestEngineIntegration:
 
         cx_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -509,6 +520,7 @@ class TestEngineIntegration:
 
         cz_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -533,6 +545,7 @@ class TestEngineIntegration:
 
         bs_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -557,6 +570,7 @@ class TestEngineIntegration:
 
         s2_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -581,6 +595,7 @@ class TestEngineIntegration:
 
         ck_test_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -605,6 +620,7 @@ class TestEngineIntegration:
 
         k_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -629,6 +645,7 @@ class TestEngineIntegration:
 
         k_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -653,6 +670,7 @@ class TestEngineIntegration:
 
         v_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -677,6 +695,7 @@ class TestEngineIntegration:
 
         v_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -701,6 +720,7 @@ class TestEngineIntegration:
 
         p_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -725,6 +745,7 @@ class TestEngineIntegration:
 
         p_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -749,6 +770,7 @@ class TestEngineIntegration:
 
         r_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -773,6 +795,7 @@ class TestEngineIntegration:
 
         r_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -797,6 +820,7 @@ class TestEngineIntegration:
 
         s_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -821,6 +845,7 @@ class TestEngineIntegration:
 
         s_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -841,10 +866,11 @@ class TestEngineIntegration:
         prog = sf.Program(3)
 
         with prog.context as q:
-            ops.Dgate(1) | (q[0])
+            ops.Dgate(1, 0) | (q[0])
 
         d_test_0_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -865,10 +891,11 @@ class TestEngineIntegration:
         prog = sf.Program(3)
 
         with prog.context as q:
-            ops.Dgate(1) | (q[1])
+            ops.Dgate(1, 0) | (q[1])
 
         d_test_1_output = dedent(
             r"""            \documentclass{article}
+            \pagestyle{empty}
             \usepackage{qcircuit}
             \begin{document}
             \Qcircuit {
@@ -923,7 +950,7 @@ class TestEngineIntegration:
         prog = sf.Program(3)
 
         with prog.context as q:
-            ops.Dgate(1) | (q[1])
+            ops.Dgate(1, 0) | (q[1])
             ops.Rgate(1) | (q[1])
             ops.S2gate(1) | (q[0], q[1])
 
@@ -944,7 +971,7 @@ class TestEngineIntegration:
         prog = sf.Program(3)
 
         with prog.context as q:
-            ops.Dgate(1) | (q[1])
+            ops.Dgate(1, 0) | (q[1])
             ops.Rgate(1) | (q[1])
             ops.S2gate(1) | (q[0], q[1])
 

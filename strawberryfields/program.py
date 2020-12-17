@@ -13,94 +13,12 @@
 # limitations under the License.
 
 """
-Quantum programs
-================
-
-**Module name:** :mod:`strawberryfields.program`
-
-.. currentmodule:: strawberryfields.program
-
-This module implements the :class:`Program` class which acts as a representation for quantum circuits.
-The Program object also acts as a context for defining the quantum circuit using the Python-embedded Blackbird syntax.
-
-A typical use looks like
-
-.. include:: example_use.rst
-
-The Program objects keep track of the state of the quantum register they act on, using a dictionary of :class:`RegRef` objects.
-The currently active register references can be accessed using the :meth:`~Program.register` method.
-
-
-Program methods
----------------
-
-.. currentmodule:: strawberryfields.program.Program
-
-.. autosummary::
-   context
-   register
-   num_subsystems
-   __len__
-   can_follow
-   append
-   lock
-   compile
-   optimize
-   print
-   draw_circuit
-
-The following are internal Program methods. In most cases the user should not
-call these directly.
-
-.. autosummary::
-   __enter__
-   __exit__
-   _clear_regrefs
-   _add_subsystems
-   _delete_subsystems
-   _index_to_regref
-   _test_regrefs
-   _linked_copy
-
-
-**Module name:** :mod:`strawberryfields.program_utils`
-
-.. currentmodule:: strawberryfields.program_utils
-
-Helper classes
---------------
-
-.. autosummary::
-   Command
-   RegRef
-   RegRefTransform
-
-
-Utility functions
------------------
-
-.. autosummary::
-   list_to_grid
-   grid_to_DAG
-   list_to_DAG
-   DAG_to_list
-   group_operations
-   optimize_circuit
-
-
-Exceptions
-----------
-
-.. autosummary::
-   MergeFailure
-   CircuitError
-   RegRefError
-
+This module implements the :class:`.Program` class which acts as a representation for quantum circuits.
 
 Quantum circuit representation
 ------------------------------
 
-The :class:`Command` instances in the circuit form a
+The :class:`.Command` instances in the circuit form a
 `strict partially ordered set <http://en.wikipedia.org/wiki/Partially_ordered_set#Strict_and_non-strict_partial_orders>`_
 in the sense that the order in which the operations have to be executed is usually not completely fixed.
 For example, operations acting on different subsystems always commute with each other.
@@ -121,78 +39,120 @@ Three different (but equivalent) representations of the circuit are used.
   is empty, that is, consuming it in a topological order.
   Note that a topological order is not always unique, there may be several equivalent topological orders.
 
+.. currentmodule:: strawberryfields.program_utils
+
 The three representations can be converted to each other
 using the functions :func:`list_to_grid`, :func:`grid_to_DAG` and :func:`DAG_to_list`.
 
-
 .. currentmodule:: strawberryfields.program
-
-
-Code details
-~~~~~~~~~~~~
-
 """
 # pylint: disable=too-many-instance-attributes,attribute-defined-outside-init
 
 import copy
 import numbers
 import warnings
-
 import networkx as nx
 
-import strawberryfields.circuitdrawer as sfcd
-import strawberryfields.circuitspecs as specs
-import strawberryfields.program_utils as pu
-from .program_utils import Command, RegRef, CircuitError, RegRefError
+import blackbird as bb
+from blackbird.utils import match_template
 
+import strawberryfields as sf
+
+import strawberryfields.circuitdrawer as sfcd
+from strawberryfields.compilers import Compiler, compiler_db
+import strawberryfields.program_utils as pu
+
+from .program_utils import Command, RegRef, CircuitError, RegRefError
+from .parameters import FreeParameter, ParameterError
+
+
+# for automodapi, do not include the classes that should appear under the top-level strawberryfields namespace
+__all__ = []
+
+
+ALLOWED_RUN_OPTIONS = ["shots"]
 
 
 class Program:
-    """Represents a quantum circuit.
+    """Represents a photonic quantum circuit.
 
-    A quantum circuit is a set of quantum operations applied in a specific order
-    to a set of subsystems (represented by wires in the circuit diagram) of the quantum register.
-    The Program class represents a quantum circuit in general as a directed acyclic graph (DAG)
-    whose nodes are :class:`Command` instances, and each (directed) edge in the graph
-    corresponds to a specific wire along which the two associated Commands are connected.
+    The program class provides a context manager for:
 
-    Program instances also act as context managers (and the context itself) for inputting
-    quantum circuits using a :code:`with` block and :class:`Operation` instances.
-    The contexts may not be nested.
+    * accessing the quantum register associated with the program, and
+    * appending :doc:`/introduction/ops` to the program.
 
-    The quantum circuit is inputted by using the :meth:`~strawberryfields.ops.Operation.__or__`
-    methods of the quantum operations, which call the :meth:`append` method of the Program.
-    :meth:`append` checks that the register references are valid and then
-    adds a new :class:`.Command` instance to the Program.
+    Within the context, operations are appended to the program using the
+    Python-embedded Blackbird syntax
 
-    The ``New`` and ``Del`` operations modify the quantum register itself by adding
-    and deleting subsystems. The Program keeps track of these changes (using
-    :class:`RegRef` instances that represent the register)
-    as they are appended to it in order to be able to report register
-    reference errors as soon as they happen.
+    .. code-block:: python3
 
-    Program `p2` can be run after Program `p1` if the RegRef state at the end of `p1` matches the
-    RegRef state at the start of `p2`. This can be enforced by constructing `p2` as an explicit
-    successor of `p1`, in which case the regrefs are copied over.
-    When a Program is run or it obtains a successor, it is locked and no more Commands can be appended to it.
+        ops.GateName(arg1, arg2, ...) | (q[i], q[j], ...)
+
+    where ``ops.GateName`` is a valid quantum operation, and ``q`` is a list
+    of the programs quantum modes.
+    All operations are appended to the program in the order they are
+    listed within the context.
+
+    In addition, some 'meta-operations' (such as :func:`~.New` and :attr:`~.Del`)
+    are provided to modify the programs quantum register itself by adding
+    and deleting subsystems.
+
+    .. note::
+
+        Two programs can be run successively on the same engine if and only if
+        the number of registers at the end of the first program matches the
+        number of modes at the beginning of the second program.
+
+        This can be enforced by constructing the second program as an explicit
+        successor of the first, in which case the registers are directly copied over.
+
+        When a Program is run or it obtains a successor, it is locked and no more
+        operations can be appended to it.
+
+    **Example:**
+
+    .. code-block:: python3
+
+        import strawberryfields as sf
+        from strawberryfields import ops
+
+        # create a 3 mode quantum program
+        prog = sf.Program(3)
+
+        with prog.context as q:
+            ops.Sgate(0.54) | q[0]
+            ops.Sgate(0.54) | q[1]
+            ops.Sgate(0.54) | q[2]
+            ops.BSgate(0.43, 0.1) | (q[0], q[2])
+            ops.BSgate(0.43, 0.1) | (q[1], q[2])
+            ops.MeasureFock() | q
+
+    The currently active register references can be accessed using the :meth:`~Program.register` method.
 
     Args:
-        num_subsystems (int, Program): Initial number of subsystems in the quantum register.
+        num_subsystems (int, Program): Initial number of modes (subsystems) in the quantum register.
             Alternatively, another Program instance from which to inherit the register state.
         name (str): program name (optional)
     """
+
     def __init__(self, num_subsystems, name=None):
         #: str: program name
         self.name = name
+        #: str: program type
+        self.type = None
         #: list[Command]: Commands constituting the quantum circuit in temporal order
         self.circuit = []
         #: bool: if True, no more Commands can be appended to the Program
         self.locked = False
-        #: str, None: for compiled Programs, the short name of the target CircuitSpecs template, otherwise None
-        self.target = None
+        #: str, None: for compiled Programs, the short name of the target Compiler template, otherwise None
+        self._target = None
+        #: tuple, None: for compiled Programs, the device spec and the short
+        # name of Compiler that was used, otherwise None
+        self._compile_info = None
         #: Program, None: for compiled Programs, this is the original, otherwise None
         self.source = None
-
+        #: dict[str, Parameter]: free circuit parameters owned by this Program
+        self.free_params = {}
         self.run_options = {}
         """dict[str, Any]: dictionary of default run options, to be passed to the engine upon
         execution of the program. Note that if the ``run_options`` dictionary is passed
@@ -200,7 +160,10 @@ class Program:
         here.
         """
 
+        self.backend_options = {}
+
         # create subsystem references
+        # Program keeps track of the state of the quantum register using a dictionary of :class:`RegRef` objects.
         if isinstance(num_subsystems, numbers.Integral):
             #: int: initial number of subsystems
             self.init_num_subsystems = num_subsystems
@@ -218,7 +181,9 @@ class Program:
             self.reg_refs = copy.deepcopy(parent.reg_refs)  # independent copy of the RegRefs
             self.unused_indices = copy.copy(parent.unused_indices)
         else:
-            raise TypeError('First argument must be either the number of subsystems or the parent Program.')
+            raise TypeError(
+                "First argument must be either the number of subsystems or the parent Program."
+            )
 
         # save the initial regref state
         #: dict[int, RegRef]: like reg_refs
@@ -243,6 +208,29 @@ class Program:
     def print(self, print_fn=print):
         """Print the program contents using Blackbird syntax.
 
+        **Example:**
+
+        .. code-block:: python
+
+            # create a 3 mode quantum program
+            prog = sf.Program(3)
+
+            with prog.context as q:
+                ops.Sgate(0.54) | q[0]
+                ops.Sgate(0.54) | q[1]
+                ops.Sgate(0.54) | q[2]
+                ops.BSgate(0.43, 0.1) | (q[0], q[2])
+                ops.BSgate(0.43, 0.1) | (q[1], q[2])
+                ops.MeasureFock() | q
+
+        >>> prog.print()
+        Sgate(0.54, 0) | (q[0])
+        Sgate(0.54, 0) | (q[1])
+        Sgate(0.54, 0) | (q[2])
+        BSgate(0.43, 0.1) | (q[0], q[2])
+        BSgate(0.43, 0.1) | (q[1], q[2])
+        MeasureFock | (q[0], q[1], q[2])
+
         Args:
             print_fn (function): optional custom function to use for string printing
         """
@@ -266,7 +254,7 @@ class Program:
         if pu.Program_current_context is None:
             pu.Program_current_context = self
         else:
-            raise RuntimeError('Only one Program context can be active at a time.')
+            raise RuntimeError("Only one Program context can be active at a time.")
         return self.register
 
     def __exit__(self, ex_type, ex_value, ex_tb):
@@ -278,7 +266,7 @@ class Program:
     # =================================================
     @property
     def register(self):
-        """Return symbolic references to all the currently valid register subsystems.
+        """Return a tuple of all the currently valid quantum modes.
 
         Returns:
             tuple[RegRef]: valid subsystem references
@@ -287,7 +275,7 @@ class Program:
 
     @property
     def num_subsystems(self):
-        """Return the current number of valid register subsystems.
+        """Return the current number of valid quantum modes.
 
         Returns:
             int: number of currently valid register subsystems
@@ -317,13 +305,13 @@ class Program:
             tuple[RegRef]: tuple of the newly added subsystem references
         """
         if self.locked:
-            raise CircuitError('The Program is locked, no new subsystems can be created.')
+            raise CircuitError("The Program is locked, no new subsystems can be created.")
         if not isinstance(n, numbers.Integral) or n < 1:
-            raise ValueError('Number of added subsystems {} is not a positive integer.'.format(n))
+            raise ValueError("Number of added subsystems {} is not a positive integer.".format(n))
 
         first_unassigned_index = len(self.reg_refs)
         # create a list of RegRefs
-        inds = [first_unassigned_index+i for i in range(n)]
+        inds = [first_unassigned_index + i for i in range(n)]
         refs = tuple(RegRef(i) for i in inds)
         # add them to the index map
         for r in refs:
@@ -346,7 +334,7 @@ class Program:
         for r in refs:
             # mark the RegRef as deleted
             r.active = False
-            #self.reg_refs[r.ind].active = False
+            # self.reg_refs[r.ind].active = False
         # NOTE: deleted indices are *not* removed from self.unused_indices
 
     def lock(self):
@@ -385,7 +373,7 @@ class Program:
         """
         # index must be found in the dict
         if ind not in self.reg_refs:
-            raise RegRefError('Subsystem {} does not exist.'.format(ind))
+            raise RegRefError("Subsystem {} does not exist.".format(ind))
         return self.reg_refs[ind]
 
     def _test_regrefs(self, reg):
@@ -408,18 +396,18 @@ class Program:
             if isinstance(rr, RegRef):
                 # regref must be found in the dict values (the RegRefs are compared using __eq__, which, since we do not define it, defaults to "is")
                 if rr not in self.reg_refs.values():
-                    raise RegRefError('Unknown RegRef.')
+                    raise RegRefError("Unknown RegRef.")
                 if self.reg_refs[rr.ind] is not rr:
-                    raise RegRefError('RegRef state has become inconsistent.')
+                    raise RegRefError("RegRef state has become inconsistent.")
             elif isinstance(rr, numbers.Integral):
                 rr = self._index_to_regref(rr)
             else:
-                raise RegRefError('Subsystems can only be indexed using integers and RegRefs.')
+                raise RegRefError("Subsystems can only be indexed using integers and RegRefs.")
 
             if not rr.active:
-                raise RegRefError('Subsystem {} has already been deleted.'.format(rr.ind))
+                raise RegRefError("Subsystem {} has already been deleted.".format(rr.ind))
             if rr in temp:
-                raise RegRefError('Trying to act on the same subsystem more than once.')
+                raise RegRefError("Trying to act on the same subsystem more than once.")
             temp.append(rr)
         return temp
 
@@ -433,12 +421,12 @@ class Program:
             list[RegRef]: subsystem list as RegRefs
         """
         if self.locked:
-            raise CircuitError('The Program is locked, no more Commands can be appended to it.')
+            raise CircuitError("The Program is locked, no more Commands can be appended to it.")
 
         # test that the target subsystem references are ok
         reg = self._test_regrefs(reg)
         # also test possible Parameter-related dependencies
-        self._test_regrefs(op.extra_deps)
+        self._test_regrefs(op.measurement_deps)
         for rr in reg:
             # it's used now
             self.unused_indices.discard(rr.ind)
@@ -449,6 +437,7 @@ class Program:
         """Create a copy of the Program, linked to the original.
 
         Both the original and the copy are :meth:`locked <lock>`, since they share their RegRefs.
+        FreeParameters are also shared.
 
         Returns:
             Program: a copy of the Program
@@ -462,22 +451,58 @@ class Program:
             p.source = self.source
         return p
 
-    def compile(self, target, **kwargs):
-        """Compile the program targeting the given circuit template.
+    def assert_number_of_modes(self, device):
+        """Check that the number of modes in the program is valid for the given device."""
 
-        Validates the program against the given target, making sure all the Operations
-        used are accepted by the target template.
-        Additionally, depending on the target, the compilation may modify the quantum circuit
-        into an equivalent circuit, e.g., by decomposing certain gates into sequences
-        of simpler gates, or optimizing the gate ordering using commutation rules.
+        # Program subsystems may be created and destroyed during execution. The length
+        # of the program registers represents the total number of modes that has ever existed.
+        modes_total = len(self.reg_refs)
 
-        The returned compiled Program shares its :class:`RegRefs <RegRef>` with the original,
-        which makes it easier to access the measurement results, but also necessitates the
-        :meth:`locking <lock>` of both the compiled program and the original to make sure the
-        RegRef state remains consistent.
+        if modes_total > device.modes:
+            raise CircuitError(
+                f"This program contains {modes_total} modes, but the device '{device.target}' "
+                f"only supports a {device.modes}-mode program."
+            )
+
+    def compile(self, *, device=None, compiler=None, **kwargs):
+        """Compile the program given a Strawberry Fields photonic compiler, or
+        hardware device specification.
+
+        The compilation process can involve up to three stages:
+
+        1. **Validation:** Validates properties of the program, including number of modes and
+           allowed operations, making sure all the :doc:`/introduction/ops` used are accepted by the
+           compiler.
+
+        2. **Decomposition:** Once the program has been validated, decomposition are performed,
+           transforming certain gates into sequences of simpler gates.
+
+        3. **General compilation:** Finally, the compiler might specify bespoke compilation logic
+           for transforming the  quantum circuit into an equivalent circuit which can be executed
+           by the target device.
+
+        **Example:**
+
+        The ``gbs`` compile target will
+        compile a circuit consisting of Gaussian operations and Fock measurements
+        into canonical Gaussian boson sampling form.
+
+        >>> prog2 = prog.compile(compiler="gbs")
+
+        For a hardware device a :class:`~.DeviceSpec` object, and optionally a specified compile strategy,
+        must be supplied. If no compile strategy is supplied the default compiler from the device
+        specification is used.
+
+        >>> eng = sf.RemoteEngine("X8")
+        >>> device = eng.device_spec
+        >>> prog2 = prog.compile(device=device, compiler="Xcov")
 
         Args:
-            target (str, ~strawberryfields.circuitspecs.CircuitSpecs): short name of the target circuit specification, or the specification object itself
+            device (~strawberryfields.api.DeviceSpec): device specification object to use for
+                program compilation
+            compiler (str, ~strawberryfields.compilers.Compiler): Compiler name or compile strategy
+                to use. If a device is specified, this overrides the compile strategy specified by
+                the hardware :class:`~.DevicSpec`.
 
         Keyword Args:
             optimize (bool): If True, try to optimize the program by merging and canceling gates.
@@ -488,51 +513,88 @@ class Program:
         Returns:
             Program: compiled program
         """
-        if isinstance(target, specs.CircuitSpecs):
-            db = target
-            target = db.short_name
-        elif target in specs.circuit_db:
-            db = specs.circuit_db[target]()
+        # pylint: disable=too-many-branches
+        if device is None and compiler is None:
+            raise ValueError("Either one or both of 'device' and 'compiler' must be specified")
+
+        def _get_compiler(compiler_or_name):
+            if compiler_or_name in compiler_db:
+                return compiler_db[compiler_or_name]()
+
+            if isinstance(compiler_or_name, Compiler):
+                return compiler_or_name
+
+            raise ValueError(f"Unknown compiler '{compiler_or_name}'.")
+
+        if device is not None:
+            target = device.target
+
+            if compiler is None:
+                # get the default compiler from the device spec
+                compiler_name = device.default_compiler
+
+                if compiler_name is not None:
+                    compiler = compiler_db[device.default_compiler]()
+                else:
+                    raise CircuitError(
+                        f"The device '{target}' does not specify a compiler. A compiler "
+                        "must be manually provided when calling Program.compile()."
+                    )
+            else:
+                compiler = _get_compiler(compiler)
+
+            # TODO: add validation for device specs that provide a dictionary for `device.modes`.
+            if device.modes is not None and isinstance(device.modes, int):
+                self.assert_number_of_modes(device)
+
         else:
-            raise ValueError("Could not find target '{}' in the Strawberry Fields circuit database.".format(target))
+            compiler = _get_compiler(compiler)
+            target = compiler.short_name
 
-        if db.modes is not None:
-            # subsystems may be created and destroyed, this is total number that has ever existed
-            modes_total = len(self.reg_refs)
-            if modes_total > db.modes:
-                raise CircuitError(
-                    "This program requires {} modes, but the target '{}' "
-                    "only supports a {}-mode program".format(modes_total, target, db.modes)
-                )
+        seq = compiler.decompose(self.circuit)
 
-        seq = db.decompose(self.circuit)
-
-        if kwargs.get('warn_connected', True):
+        if kwargs.get("warn_connected", True):
             DAG = pu.list_to_DAG(seq)
             temp = nx.algorithms.components.number_weakly_connected_components(DAG)
             if temp > 1:
-                warnings.warn('The circuit consists of {} disconnected components.'.format(temp))
+                warnings.warn("The circuit consists of {} disconnected components.".format(temp))
 
         # run optimizations
-        if kwargs.get('optimize', False):
+        if kwargs.get("optimize", False):
             seq = pu.optimize_circuit(seq)
 
-        # does the circuit spec  have its own compilation method?
-        if db.compile is not None:
-            seq = db.compile(seq, self.register)
+        seq = compiler.compile(seq, self.register)
 
         # create the compiled Program
         compiled = self._linked_copy()
         compiled.circuit = seq
-        compiled.target = target
+        compiled._target = target
+        compiled._compile_info = (device, compiler.short_name)
 
-        # get run options of compiled program
-        # for the moment, shots is the only supported run option.
-        if "shots" in kwargs:
-            compiled.run_options["shots"] = kwargs["shots"]
+        # Get run options of compiled program.
+        run_options = {k: kwargs[k] for k in ALLOWED_RUN_OPTIONS if k in kwargs}
+        compiled.run_options.update(run_options)
+
+        # set backend options of the program
+        backend_options = {k: kwargs[k] for k in kwargs if k not in ALLOWED_RUN_OPTIONS}
+        compiled.backend_options.update(backend_options)
+
+        # validate gate parameters
+        if device is not None and device.gate_parameters:
+            bb_device = bb.loads(device.layout)
+            bb_compiled = sf.io.to_blackbird(compiled)
+
+            try:
+                user_parameters = match_template(bb_device, bb_compiled)
+            except bb.utils.TemplateError as e:
+                raise CircuitError(
+                    "Program cannot be used with the compiler '{}' "
+                    "due to incompatible topology.".format(compiler.short_name)
+                ) from e
+
+            device.validate_parameters(**user_parameters)
 
         return compiled
-
 
     def optimize(self):
         """Simplify and optimize the program.
@@ -551,12 +613,29 @@ class Program:
         opt.circuit = pu.optimize_circuit(self.circuit)
         return opt
 
-
-    def draw_circuit(self, tex_dir='./circuit_tex', write_to_file=True):
+    def draw_circuit(self, tex_dir="./circuit_tex", write_to_file=True):
         r"""Draw the circuit using the Qcircuit :math:`\LaTeX` package.
 
         This will generate the LaTeX code required to draw the quantum circuit
         diagram corresponding to the Program.
+
+
+        The drawing of the following Xanadu supported operations are currently supported:
+
+        .. rst-class:: docstable
+
+        +-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        |     Gate type     |                                                                            Supported gates                                                                             |
+        +===================+========================================================================================================================================================================+
+        | Single mode gates | :class:`~.Dgate`, :class:`~.Xgate`, :class:`~.Zgate`, :class:`~.Sgate`, :class:`~.Rgate`, :class:`~.Pgate`, :class:`~.Vgate`, :class:`~.Kgate`, :class:`~.Fouriergate` |
+        +-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+        | Two mode gates    | :class:`~.BSgate`, :class:`~.S2gate`, :class:`~.CXgate`, :class:`~.CZgate`, :class:`~.CKgate`                                                                          |
+        +-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+        .. note::
+
+            Measurement operations :class:`~.MeasureHomodyne`, :class:`~.MeasureHeterodyne`,
+            and :class:`~.MeasureFock` are not currently supported.
 
         Args:
             tex_dir (str): relative directory for latex document output
@@ -574,3 +653,78 @@ class Program:
             document = drawer.compile_document(tex_dir=tex_dir)
 
         return [document, tex]
+
+    @property
+    def target(self):
+        """The target specification the program has been compiled against.
+
+        If the program has not been compiled, this will return ``None``.
+
+        Returns:
+            str or None: the short name of the target Compiler template if
+            compiled, otherwise None
+        """
+        return self._target
+
+    @property
+    def compile_info(self):
+        """The device specification and the compiler that was used during
+        compilation.
+
+        If the program has not been compiled, this will return ``None``.
+
+        Returns:
+            tuple or None: device specification and the short name of the
+            Compiler that was used if compiled, otherwise None
+        """
+        return self._compile_info
+
+    def params(self, *args):
+        """Create and access free circuit parameters.
+
+        Returns the named free parameters. If a parameter does not exist yet, it is created and returned.
+
+        Args:
+            *args (tuple[str]): name(s) of the free parameters to access
+
+        Returns:
+            FreeParameter, list[FreeParameter]: requested parameter(s)
+        """
+        ret = []
+        for a in args:
+            if not isinstance(a, str):
+                raise TypeError("Parameter names must be strings.")
+
+            if a not in self.free_params:
+                if self.locked:
+                    raise CircuitError(
+                        "The Program is locked, no more free parameters can be created."
+                    )
+                p = FreeParameter(a)
+                self.free_params[a] = p
+            else:
+                p = self.free_params[a]
+            ret.append(p)
+
+        if len(ret) == 1:
+            return ret[0]
+        return ret
+
+    def bind_params(self, binding):
+        """Binds the free parameters of the program to the given values.
+
+        Args:
+            binding (dict[Union[str, FreeParameter], Any]): mapping from parameter names (or the
+                parameters themselves) to parameter values
+
+        Raises:
+            ParameterError: tried to bind an unknown parameter
+        """
+        for k, v in binding.items():
+            temp = self.free_params.get(k)  # it's a name
+            if temp:
+                temp.val = v
+            elif k in self.free_params.values():  # it's a parameter
+                k.val = v
+            else:
+                raise ParameterError("Unknown free parameter '{}'".format(k))

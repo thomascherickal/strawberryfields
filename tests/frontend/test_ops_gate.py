@@ -20,11 +20,12 @@ import numpy as np
 
 import strawberryfields.program_utils as pu
 
+from strawberryfields import Engine
 from strawberryfields import ops
 from strawberryfields.program import Program
 from strawberryfields.program_utils import MergeFailure, RegRefError
-from strawberryfields import utils
-from strawberryfields.parameters import Parameter
+from strawberryfields.parameters import par_evaluate
+
 
 # make test deterministic
 np.random.seed(42)
@@ -149,7 +150,7 @@ class TestGateBasics:
 
         def dummy_apply(self, reg, backend, **kwargs):
             """Dummy apply function, used to store the evaluated params"""
-            self.res = [x.evaluate() for x in self.p]
+            self.res = par_evaluate(self.p)
 
         with monkeypatch.context() as m:
             # patch the standard Operation class apply method
@@ -159,24 +160,63 @@ class TestGateBasics:
             m.setattr(G2.__class__, "_apply", dummy_apply)
             G2.apply([], None)
 
-        orig_params = [x.evaluate() for x in G2.p]
+        orig_params = par_evaluate(G2.p)
         applied_params = G2.res
         # dagger should negate the first param
         assert applied_params == [-orig_params[0]] + orig_params[1:]
 
+@pytest.mark.parametrize("gate", [ops.Dgate, ops.Coherent, ops.DisplacedSqueezed])
+class TestComplexError:
+    """Tests for raising an error if a parameter passed is complex"""
 
-def test_merge_regrefs():
-    """Test merging two gates with regref parameters."""
+    def test_complex_first_argument_error(self, gate):
+        """Test that passing a complex parameter to gates that previously accepted
+        complex parameters raises an error."""
+        with pytest.raises(ValueError, match="cannot be complex"):
+            prog = Program(1)
+            with prog.context as q:
+                gate(0.2+1j) | q
+
+            eng = Engine("gaussian")
+            res = eng.run(prog)
+
+    def test_complex_symbolic(self, gate):
+        """Test that passing a complex value to symbolic parameter of a gate
+        that previously accepted complex parameters raises an error.
+
+        An example here is testing heterodyne measurements.
+        """
+        with pytest.raises(ValueError, match="cannot be complex"):
+
+            prog = Program(1)
+
+            with prog.context as q:
+                ops.MeasureHD | q[0]
+                gate(q[0].par) | q
+
+            eng = Engine("gaussian")
+            res = eng.run(prog)
+
+def test_merge_measured_pars():
+    """Test merging two gates with measured parameters."""
     prog = Program(2)
     with prog.context as q:
         ops.MeasureX | q[0]
-        D = ops.Dgate(q[0])
-        F = ops.Dgate(q[0], 0.1)
+        mpar = q[0].par  # measured parameter
+        D = ops.Dgate(mpar, 0.0)
+        F = ops.Dgate(1.0, 0.0)
+        G = ops.Dgate(mpar, 0.1)  # different p[1]
 
-    # gates that are the inverse of each other
+    # mp gates that are the inverse of each other
     merged = D.merge(D.H)
     assert merged is None
 
-    # gates that have different parameters
+    # combining measured and fixed parameters
+    assert F.merge(D).p[0] == mpar + 1.0
+    assert F.merge(D.H).p[0] == -mpar + 1.0
+    assert D.merge(F).p[0] == mpar + 1.0
+    assert D.merge(F.H).p[0] == mpar - 1.0
+
+    # gates that have different p[1] parameters
     with pytest.raises(MergeFailure, match="Don't know how to merge these gates."):
-        F.merge(D.H)
+        assert D.merge(G)

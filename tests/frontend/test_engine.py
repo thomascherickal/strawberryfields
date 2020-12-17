@@ -1,4 +1,4 @@
-# Copyright 2019 Xanadu Quantum Technologies Inc.
+# Copyright 2019-2020 Xanadu Quantum Technologies Inc.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
 # limitations under the License.
 r"""Unit tests for engine.py"""
 import pytest
-
-pytestmark = pytest.mark.frontend
+import numpy as np
 
 import strawberryfields as sf
 from strawberryfields import ops
 from strawberryfields.backends.base import BaseBackend
+
+pytestmark = pytest.mark.frontend
+
+# pylint: disable=redefined-outer-name,no-self-use,bad-continuation,expression-not-assigned,pointless-statement
 
 
 @pytest.fixture
@@ -26,13 +29,27 @@ def eng(backend):
     """Engine fixture."""
     return sf.LocalEngine(backend)
 
+
 @pytest.fixture
-def prog(backend):
+def prog():
     """Program fixture."""
     prog = sf.Program(2)
     with prog.context as q:
-        ops.Dgate(0.5) | q[0]
+        ops.Dgate(0.5, 0.0) | q[0]
     return prog
+
+
+batch_engines = [
+    sf.Engine("gaussian", backend_options={"batch_size": 2, "cutoff_dim": 6}),
+    sf.Engine("fock", backend_options={"batch_size": 2, "cutoff_dim": 6}),
+    sf.Engine("tf", backend_options={"batch_size": 2, "cutoff_dim": 6}),
+]
+
+engines = [
+    sf.Engine("gaussian", backend_options={"cutoff_dim": 6}),
+    sf.Engine("fock", backend_options={"cutoff_dim": 6}),
+    sf.Engine("tf", backend_options={"cutoff_dim": 6}),
+]
 
 
 class TestEngine:
@@ -45,12 +62,52 @@ class TestEngine:
 
     def test_bad_backend(self):
         """Backend must be a string or a BaseBackend instance."""
-        with pytest.raises(TypeError, match='backend must be a string or a BaseBackend instance'):
-            eng = sf.LocalEngine(0)
+        with pytest.raises(TypeError, match="backend must be a string or a BaseBackend instance"):
+            _ = sf.LocalEngine(0)
 
 
 class TestEngineProgramInteraction:
     """Test the Engine class and its interaction with Program instances."""
+
+    def test_shots_default(self):
+        """Test that default shots (1) is used"""
+        prog = sf.Program(1)
+        eng = sf.Engine("gaussian")
+
+        with prog.context as q:
+            ops.Sgate(0.5) | q[0]
+            ops.MeasureFock() | q
+
+        results = eng.run(prog)
+        assert results.samples.shape[0] == 1
+
+    def test_shots_run_options(self):
+        """Test that run_options takes precedence over default"""
+        prog = sf.Program(1)
+        eng = sf.Engine("gaussian")
+
+        with prog.context as q:
+            ops.Sgate(0.5) | q[0]
+            ops.MeasureFock() | q
+
+        prog.run_options = {"shots": 5}
+        results = eng.run(prog)
+        assert results.samples.shape[0] == 5
+
+    def test_shots_passed(self):
+        """Test that shots supplied via eng.run takes precedence over
+        run_options and that run_options isn't changed"""
+        prog = sf.Program(1)
+        eng = sf.Engine("gaussian")
+
+        with prog.context as q:
+            ops.Sgate(0.5) | q[0]
+            ops.MeasureFock() | q
+
+        prog.run_options = {"shots": 5}
+        results = eng.run(prog, shots=2)
+        assert results.samples.shape[0] == 2
+        assert prog.run_options["shots"] == 5
 
     def test_history(self, eng, prog):
         """Engine history."""
@@ -88,7 +145,7 @@ class TestEngineProgramInteraction:
 
     def test_sequential_programs(self, eng):
         """Running several program segments sequentially."""
-        D = ops.Dgate(0.2)
+        D = ops.Dgate(0.2, 0.0)
         p1 = sf.Program(3)
         with p1.context as q:
             D | q[1]
@@ -124,7 +181,7 @@ class TestEngineProgramInteraction:
 
         p1 = sf.Program(2)
         with p1.context as q:
-            ops.Dgate(a) | q[1]
+            ops.Dgate(np.abs(a), np.angle(a)) | q[1]
             ops.Sgate(r) | q[1]
 
         eng.run(p1)
@@ -146,13 +203,192 @@ class TestEngineProgramInteraction:
             ops.Rgate(r) | q[1]
 
         eng.run(p2)
-        expected2 = expected1 + [
-            "Run 1:",
-            "Rgate({}) | (q[1])".format(r),
-        ]
+        expected2 = expected1 + ["Run 1:", "Rgate({}) | (q[1])".format(r)]
         assert inspect() == expected2
 
         # reapply history
         eng.reset()
         eng.run([p1, p2])
         assert inspect() == expected2
+
+    @pytest.mark.parametrize("eng", engines)
+    def test_combining_samples(self, eng):
+        """Check that samples are combined correctly when using multiple measurements"""
+
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureX | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureFock() | q[0]
+
+        result = eng.run(prog)
+
+        # check that shape is (shots, measured_modes)
+        assert result.samples.shape == (1, 4)
+
+        # check that MesureFock measures `0` while MeasureX does NOT measure `0`.
+        correct_samples = [0, 0, 1, 0]
+        assert [bool(i) for i in result.samples[0]] == correct_samples
+
+    @pytest.mark.parametrize("eng", engines)
+    def test_measuring_same_modes(self, eng):
+        """Check that only the last measurement is returned when measuring the same mode twice"""
+
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureX | q[2]
+
+        result = eng.run(prog)
+
+        # check that shape is (shots, measured_modes)
+        assert result.samples.shape == (1, 3)
+
+        # check that MesureFock measures `0` while MeasureX does NOT measure `0`.
+        correct_samples = [0, 1, 0]
+        assert [bool(i) for i in result.samples[0]] == correct_samples
+
+    @pytest.mark.parametrize("eng", engines)
+    def test_all_samples_one_meas_per_mode(self, eng):
+        """Test that samples are stored for the correct modes with
+        a single measurement each mode."""
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+
+        result = eng.run(prog)
+
+        # Check that the number of all the samples equals to the number
+        # of measurements
+        assert len(result.all_samples.values()) == 3
+
+        correct_modes = [2, 1, 3]
+        correct_samples = [[0], [0], [0]]
+
+        assert result.all_samples[1] == [0]
+        assert result.all_samples[3] == [0]
+        assert result.all_samples[2] == [0]
+
+    @pytest.mark.parametrize("eng", engines)
+    def test_all_samples_multi_meas_per_mode(self, eng):
+        """Test that samples are stored for the correct modes with
+        multiple measurements on certain modes."""
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureX | q[2]
+
+        result = eng.run(prog)
+
+        assert result.all_samples[1] == [0]
+        assert result.all_samples[3] == [0]
+        assert [bool(i) for i in result.all_samples[2]] == [0,1]
+
+    @pytest.mark.parametrize("eng", engines)
+    def test_all_samples_multi_runs(self, eng):
+        """Test that consequtive engine runs reset the _all_samples
+        attribute by checking the length of the attribute."""
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureX | q[2]
+
+        result = eng.run(prog)
+
+        # Check that the number of all the samples equals to the number
+        # of measurements
+        assert result.all_samples[1] == [0]
+        assert result.all_samples[3] == [0]
+        assert [bool(i) for i in result.all_samples[2]] == [0,1]
+
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[0]
+
+        result = eng.run(prog)
+
+        # Check that _all_samples contains the same elements and new items were
+        # not appended
+        assert result.all_samples[0] == [0]
+
+    def test_all_samples_multiple_shots(self):
+        """Test the case of storing all samples for multiple shots"""
+        eng = sf.Engine("gaussian", backend_options={"cutoff_dim": 6})
+        shots = 5
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureFock() | q[2]
+
+        result = eng.run(prog, shots=shots)
+
+        assert len(result.all_samples[1]) == 1
+        assert len(result.all_samples[3]) == 1
+        assert len(result.all_samples[2]) == 2
+
+        assert np.array_equal(result.all_samples[1][0], np.array([0, 0, 0, 0, 0]))
+        assert np.array_equal(result.all_samples[3][0], np.array([0, 0, 0, 0, 0]))
+        assert np.array_equal(result.all_samples[2][0], np.array([0, 0, 0, 0, 0]))
+        assert np.array_equal(result.all_samples[2][1], np.array([0, 0, 0, 0, 0]))
+
+    def test_all_samples_batched(self):
+        """Test the case of storing all samples for batches"""
+        batch_size = 2
+        eng = sf.Engine("tf", backend_options={"batch_size": batch_size, "cutoff_dim": 6})
+        prog = sf.Program(5)
+        with prog.context as q:
+            ops.MeasureFock() | q[2]
+            ops.MeasureFock() | (q[1], q[3])
+            ops.MeasureFock() | q[2]
+
+        result = eng.run(prog)
+        assert len(result.all_samples[1]) == 1
+        assert len(result.all_samples[3]) == 1
+        assert len(result.all_samples[2]) == 2
+
+        assert np.array_equal(result.all_samples[1][0].numpy(), np.array([[0], [0]]))
+        assert np.array_equal(result.all_samples[3][0].numpy(), np.array([[0], [0]]))
+        assert np.array_equal(result.all_samples[2][0].numpy(), np.array([[0], [0]]))
+        assert np.array_equal(result.all_samples[2][1].numpy(), np.array([[0], [0]]))
+
+class TestMultipleShotsErrors:
+    """Test if errors are raised correctly when using multiple shots."""
+
+    @pytest.mark.parametrize("meng", batch_engines)
+    def test_batching_error(self, meng, prog):
+        """Check that correct error is raised with batching and shots > 1."""
+        with pytest.raises(
+            NotImplementedError, match="Batching cannot be used together with multiple shots."
+        ):
+            meng.run(prog, **{"shots": 2})
+
+    @pytest.mark.parametrize("meng", engines)
+    def test_postselection_error(self, meng):
+        """Check that correct error is raised with post-selection and shots > 1."""
+        prog = sf.Program(2)
+        with prog.context as q:
+            ops.MeasureFock(select=0) | q[0]
+
+        with pytest.raises(
+            NotImplementedError, match="Post-selection cannot be used together with multiple shots."
+        ):
+            meng.run(prog, **{"shots": 2})
+
+    @pytest.mark.parametrize("meng", engines)
+    def test_feedforward_error(self, meng):
+        """Check that correct error is raised with feed-forwarding and shots > 1."""
+        prog = sf.Program(2)
+        with prog.context as q:
+            ops.MeasureFock() | q[0]
+            ops.Dgate(q[0].par, 0) | q[1]
+
+        with pytest.raises(
+            NotImplementedError,
+            match="Feed-forwarding of measurements cannot be used together with multiple shots.",
+        ):
+            meng.run(prog, **{"shots": 2})

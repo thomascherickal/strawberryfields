@@ -1,89 +1,135 @@
-Strawberry Fields
-#################
+Strawberry Fields Documentation
+###############################
 
-.. |circuit| image:: _static/gate_teleport_ex.svg
-    :align: middle
-    :width: 100%
-    :target: javascript:void(0);
-
-.. |photon| image:: gallery/state_learner/thumbnail.gif
-    :align: middle
-    :width: 250px
-    :target: javascript:void(0);
-
-.. |NOON| image:: _static/NOON.png
-    :align: middle
-    :width: 250px
-    :target: javascript:void(0);
-
-.. |SFI| image:: _static/laptop.png
-    :align: middle
-    :width: 300px
-    :target: javascript:void(0);
+.. rst-class:: lead grey-text ml-2
 
 :Release: |release|
-:Date: |today|
-
-Strawberry Fields is a full-stack Python library for designing,
-simulating, and optimizing continuous variable (CV) quantum
-optical circuits.
-
-.. rst-class:: gallery-table
-
-+-----------------+-----------+-----------------+
-| |photon|        |  |SFI|    |  |NOON|         |
-+-----------------+-----------+-----------------+
-
 
 .. raw:: html
 
-    <h2 style="margin-top:0px;">Features</h2>
+    <style>
+        #right-column.card {
+            box-shadow: none!important;
+        }
+        #right-column.card:hover {
+            box-shadow: none!important;
+        }
+        .breadcrumb {
+            display: none;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .footer-relations {
+            border-top: 0px;
+        }
+    </style>
+    <div class="row container-fluid">
+      <div class="col-lg-4 col-12 align-middle mb-2 text-center">
+          <img src="_static/laptop.png" class="img-fluid" alt="Responsive image" style="width:100%; max-width: 300px;"></img>
+      </div>
+      <div class="col-lg-8 col-12 align-middle mb-2">
+        <p class="lead grey-text">
+            Strawberry Fields is a full-stack Python library for designing, optimizing, and
+            utilizing photonic quantum computers.
+        </p>
+      </div>
+    </div>
+    <div style='clear:both'></div>
+    <div class="container mt-2 mb-2">
+        <div class="row mt-3">
+            <div class="col-lg-4 mb-2 adlign-items-stretch">
+                <a href="introduction/introduction.html">
+                    <div class="card rounded-lg" style="height:100%;">
+                        <div class="d-flex">
+                            <div>
+                                <h3 class="card-title pl-3 mt-4">
+                                Using SF
+                                </h3>
+                                <p class="mb-3 grey-text px-3">
+                                    Learn how to interact with a photonic quantum computer <i class="fas fa-angle-double-right"></i>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-lg-4 mb-2 align-items-stretch">
+                <a href="development/development_guide.html">
+                <div class="card rounded-lg" style="height:100%;">
+                    <div class="d-flex">
+                        <div>
+                            <h3 class="card-title pl-3 mt-4">
+                            Developing
+                            </h3>
+                            <p class="mb-3 grey-text px-3">How you can contribute to Strawberry Fields <i class="fas fa-angle-double-right"></i></p>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            </div>
+            <div class="col-lg-4 mb-2 align-items-stretch">
+                <a href="code/sf.html">
+                <div class="card rounded-lg" style="height:100%;">
+                    <div class="d-flex">
+                        <div>
+                            <h3 class="card-title pl-3 mt-4">
+                            API
+                            </h3>
+                            <p class="mb-3 grey-text px-3">Explore the Strawberry Fields API <i class="fas fa-angle-double-right"></i></p>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            </div>
+        </div>
+    </div>
 
-.. image:: _static/code.png
-    :align: left
-    :width: 320px
+
+Features
+========
+
+.. image:: _static/StateLearning.gif
+    :align: right
+    :width: 300px
     :target: javascript:void(0);
 
-* An open-source software architecture for **photonic quantum computing**
+
+* Execute photonic quantum algorithms directly on `Xanadu's next-generation quantum hardware
+  <https://strawberryfields.ai/photonics/hardware/index.html>`__
 
 ..
 
-* A **full-stack** quantum software platform, implemented in Python specifically targeted to the CV model
+* `High-level functions <https://strawberryfields.ai/photonics/applications.html>`__ for **solving
+  practical problems** including **graph and network optimization**, **machine learning**, and
+  **chemistry**
 
 ..
 
-* Quantum circuits are written using the easy-to-use and intuitive **Blackbird quantum programming language**
+* Includes a suite of world-class simulators—based on cutting edge algorithms—to compile and
+  simulate photonic algorithms
 
 ..
 
-* Powers the `Strawberry Fields Interactive <https://strawberryfields.ai>`_ web app, which allows anyone to run a quantum computing simulation via **drag and drop**
+* `Train and optimize
+  <https://strawberryfields.ai/photonics/demonstrations.html#optimization-and-machine-learning>`__
+  your quantum programs with our end-to-end differentiable TensorFlow backend
 
 ..
 
-* Includes **quantum computer simulators** implemented using **NumPy** and **Tensorflow** - these built-in quantum compiler tools convert and optimize Blackbird code for classical simulation
+* Powers the `Strawberry Fields Interactive <https://strawberryfields.ai>`_ web app, which allows
+  anyone to run a quantum computing simulation via **drag and drop**
 
-.. * Includes a **quantum machine learning toolbox**, built on top of the Tensorflow backend
-
-* Future releases will aim to target experimental backends, including **photonic quantum computing chips**
-
-
-Getting started
-===============
-
-To see Strawberry Fields in action immediately, try out our `Strawberry Fields Interactive <https://strawberryfields.ai>`_ web application. Prepare your initial states, drag and drop gates, and watch your simulation run in real time right in your web browser. Then, check out our :ref:`gallery <gallery>` to see how Strawberry Fields is being used to explore interesting problems and cutting edge research in photonics and quantum computing.
-
-To get Strawberry Fields installed and running on your system, begin at the :ref:`download and installation guide <installation>`. Then, familiarize yourself with the framework of :ref:`continuous-variable quantum computation <introduction>`, the :ref:`conventions <conventions>` used by Strawberry Fields, and check out some important and interesting continuous-variable :ref:`quantum algorithms <algorithms>`.
-
-For getting started with writing your own Strawberry Fields code, have a look at the :ref:`quantum teleportation tutorial <tutorial>` - this beginner's tutorial breaks down an example Strawberry Fields program for implementing state teleportation. More advanced tutorials also provided include :ref:`boson sampling <boson_tutorial>`, :ref:`gaussian boson sampling <gaussian_boson_tutorial>`, and :ref:`machine learning <machine_learning_tutorial>`.
-
-Finally, detailed documentation on the :ref:`Strawberry fields API <code>` is provided, for full details on available quantum operations, arguments, and backends.
 
 How to cite
 ===========
 
-If you are doing research using Strawberry Fields, please cite `our paper <https://quantum-journal.org/papers/q-2019-03-11-129/>`_ :cite:`strawberryfields`:
+If you are doing research using Strawberry Fields, please cite our papers:
 
-  Nathan Killoran, Josh Izaac, Nicolás Quesada, Ville Bergholm, Matthew Amy, and Christian Weedbrook. "Strawberry Fields: A Software Platform for Photonic Quantum Computing", Quantum, 3, 129 (2019).
+  Nathan Killoran, Josh Izaac, Nicolás Quesada, Ville Bergholm, Matthew Amy, and Christian Weedbrook. "Strawberry Fields: A Software Platform for Photonic Quantum Computing", `Quantum, 3, 129 <https://quantum-journal.org/papers/q-2019-03-11-129/>`__ (2019).
+
+  Thomas R. Bromley, Juan Miguel Arrazola, Soran Jahangiri, Josh Izaac, Nicolás Quesada, Alain Delgado Gran, Maria Schuld, Jeremy Swinarton, Zeid Zabaneh, and Nathan Killoran. "Applications of Near-Term Photonic Quantum Computers: Software and Algorithms", `arxiv:1912.07634 <https://arxiv.org/abs/1912.07634>`__ (2019).
 
 Support
 =======
@@ -91,7 +137,9 @@ Support
 - **Source Code:** https://github.com/XanaduAI/strawberryfields
 - **Issue Tracker:** https://github.com/XanaduAI/strawberryfields/issues
 
-If you are having issues, please let us know by posting the issue on our Github issue tracker, or by joining our `Strawberry Fields Slack channel <https://u.strawberryfields.ai/slack>`_.
+If you are having issues, please let us know by posting the issue on our Github issue tracker.
+
+To chat directly with the team designing and building Strawberry Fields, as well as members of our community—ranging from quantum computing researchers, to students, to those just interested in being a part of a rapidly growing industry—you can join our `discussion forum <https://discuss.pennylane.ai>`_ and `Slack channel <https://u.strawberryfields.ai/slack>`_.
 
 For more details on contributing or performing research with Strawberry Fields, please see
 :ref:`research`.
@@ -105,59 +153,44 @@ Strawberry Fields is **free** and **open source**, released under the Apache Lic
 
 .. toctree::
    :maxdepth: 1
-   :caption: Getting started
+   :caption: Using Strawberry Fields
    :hidden:
 
-   installing
-   gallery/gallery
-   research
+   introduction/introduction
+   introduction/photonic_hardware
+   introduction/circuits
+   introduction/ops
+   introduction/states
+   introduction/data
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Continuous-variable quantum computing
+   :maxdepth: 1
+   :caption: Development
    :hidden:
 
-   introduction
-   op_conventions
-   quantum_algorithms
-   glossary
-   references
+   development/development_guide
+   development/research
+   development/release_notes.md
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Strawberry Fields Tutorials
+   :maxdepth: 1
+   :caption: API
    :hidden:
 
-   tutorials/blackbird
-   Basic tutorial: teleportation <tutorials/tutorial_teleportation>
-   Measurements and post-selection <tutorials/tutorial_post_selection>
-   Boson sampling & the permanent <tutorials/tutorial_boson_sampling>
-   Gaussian boson sampling & the hafnian <tutorials/tutorial_gaussian_boson_sampling>
-   Optimization & machine learning <tutorials/tutorial_machine_learning>
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Strawberry Fields API
-   :hidden:
-
-   code/code
-   code/program
-   code/engine
-   code/ops
-   code/io
-   code/circuitspecs
-   code/decompositions
-   code/utils
-   code/circuitdrawer
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Backend API
-   :hidden:
-
-   code/backend
-   code/backend.states
-   code/backend.gaussian
-   code/backend.fock
-   code/backend.tf
+   code/sf
+   code/sf_apps
+   code/sf_api
+   code/sf_backends
+   code/sf_compilers
+   code/sf_circuitdrawer
+   code/sf_cli
+   code/sf_configuration
+   code/sf_decompositions
+   code/sf_engine
+   code/sf_io
+   code/sf_ops
+   code/sf_program
+   code/sf_program_utils
+   code/sf_parameters
+   code/sf_tdm
+   code/sf_utils

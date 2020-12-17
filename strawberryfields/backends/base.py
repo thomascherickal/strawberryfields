@@ -11,114 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-r"""
-.. _backends:
-
-Backend API
-===================================================
-
-**Module name:** :mod:`strawberryfields.backends.base`
-
-.. currentmodule:: strawberryfields.backends.base
-
-This module implements the backend API. It contains the classes
-
-* :class:`BaseBackend`
-* :class:`BaseFock`
-* :class:`BaseGaussian`
-
-as well as a few methods which apply only to the Gaussian backend.
-
-.. note:: The backend API is :math:`\hbar` independent.
-          Internally the Strawberry Fields backends use :math:`\hbar=2`.
-
-
-.. note::
-    Keyword arguments are denoted ``**kwargs``, and allow additional
-    options to be passed to the backends - these are documented where
-    available. For more details on available keyword arguments, please
-    consult the backends directly.
-
-Hierarchy for backends
-------------------------
-
-.. currentmodule:: strawberryfields.backends
-
-.. inheritance-diagram:: base.BaseBackend
-    fockbackend.backend.FockBackend
-    gaussianbackend.backend.GaussianBackend
-    tfbackend.backend.TFBackend
-    :parts: 1
-
-
-BaseBackend
------------
-
-.. currentmodule:: strawberryfields.backends.base.BaseBackend
-
-.. autosummary::
-    supports
-    begin_circuit
-    add_mode
-    del_mode
-    get_modes
-    reset
-    state
-    is_vacuum
-    prepare_vacuum_state
-    prepare_coherent_state
-    prepare_squeezed_state
-    prepare_displaced_squeezed_state
-    prepare_thermal_state
-    rotation
-    displacement
-    squeeze
-    beamsplitter
-    loss
-    thermal_loss
-    measure_homodyne
-    measure_fock
-
-Fock backends
-------------------
-
-.. currentmodule:: strawberryfields.backends.base
-
-
-Some methods are only implemented in the subclass :class:`BaseFock`,
-which is the base class for simulators using a Fock-state representation
-for quantum optical circuits.
-
-.. currentmodule:: strawberryfields.backends.base.BaseFock
-
-.. autosummary::
-    get_cutoff_dim
-    prepare_fock_state
-    prepare_ket_state
-    prepare_dm_state
-    cubic_phase
-    kerr_interaction
-    cross_kerr_interaction
-
-Gaussian backends
----------------------
-
-Likewise, some methods are only implemented in subclass :class:`BaseGaussian`,
-which is the base class for simulators using a Gaussian symplectic representation
-for quantum optical circuits.
-
-.. currentmodule:: strawberryfields.backends.base.BaseGaussian
-
-.. autosummary::
-    measure_heterodyne
-
-.. currentmodule:: strawberryfields.backends.base
-
-Code details
-~~~~~~~~~~~~
-
-"""
+r"""This module contains the abstract base classes that define Strawberry Fields
+compatible statevector simulator backends."""
 
 # pylint: disable=no-self-use,missing-docstring
 
@@ -134,15 +28,16 @@ class ModeMap:
     """
     Simple internal class for maintaining a map of existing modes.
     """
+
     def __init__(self, num_subsystems):
         self._init = num_subsystems
         #: list[int]: _map[k] is the internal index used by the backend for
         # computational mode k, or None if the mode has been deleted
-        self._map = [k for k in range(num_subsystems)]
+        self._map = list(range(num_subsystems))
 
     def reset(self):
         """reset the modemap to the initial state"""
-        self._map = [k for k in range(self._init)]
+        self._map = list(range(self._init))
 
     def _single_mode_valid(self, mode):
         if mode is None:
@@ -216,16 +111,18 @@ class ModeMap:
     def add(self, num_modes):
         """Adds a mode"""
         num_active_modes = len([m for m in self._map if m is not None])
-        self._map += [k for k in range(num_active_modes, num_active_modes + num_modes)]
+        self._map += list(range(num_active_modes, num_active_modes + num_modes))
 
 
 class BaseBackend:
     """Abstract base class for backends."""
 
+    # pylint: disable=too-many-public-methods
+
     #: str: short name of the backend
-    short_name = 'base'
-    #: str, None: Short name of the CircuitSpecs class used to validate Programs for this backend. None if no validation is required.
-    circuit_spec = None
+    short_name = "base"
+    #: str, None: Short name of the Compiler class used to validate Programs for this backend. None if no validation is required.
+    compiler = None
 
     def __init__(self):
         self._supported = {}
@@ -340,14 +237,15 @@ class BaseBackend:
         """
         raise NotImplementedError
 
-    def prepare_coherent_state(self, alpha, mode):
+    def prepare_coherent_state(self, r, phi, mode):
         r"""Prepare a coherent state in the specified mode.
 
-        The requested mode is traced out and replaced with the coherent state :math:`\ket{\alpha}`.
+        The requested mode is traced out and replaced with the coherent state :math:`\ket{r e^{i\phi}}`.
         As a result the state may have to be described using a density matrix.
 
         Args:
-            alpha (complex): coherent state displacement parameter
+            r (float): coherent state displacement amplitude
+            phi (float): coherent state displacement phase
             mode (int): which mode to prepare the coherent state in
         """
         raise NotImplementedError
@@ -366,17 +264,19 @@ class BaseBackend:
         """
         raise NotImplementedError
 
-    def prepare_displaced_squeezed_state(self, alpha, r, phi, mode):
+    def prepare_displaced_squeezed_state(self, r_d, phi_d, r_s, phi_s, mode):
         r"""Prepare a displaced squeezed state in the specified mode.
 
-        The requested mode is traced out and replaced with the displaced squeezed
-        state state :math:`\ket{\alpha, z}`, where :math:`z=re^{i\phi}`.
+        The requested mode is traced out and replaced with the displaced
+        squeezed state :math:`\ket{\alpha, z}`, where :math:`\alpha=r_d
+        e^{i\phi_d}` and :math:`z=r_s e^{i\phi_s}`.
         As a result the state may have to be described using a density matrix.
 
         Args:
-            alpha (complex): displacement parameter
-            r (float): squeezing amplitude
-            phi (float): squeezing angle
+            r_d (float): displacement amplitude
+            phi_d (float): displacement angle
+            r_s (float): squeezing amplitude
+            phi_s (float): squeezing angle
             mode (int): which mode to prepare the squeezed state in
         """
         raise NotImplementedError
@@ -402,32 +302,32 @@ class BaseBackend:
         """
         raise NotImplementedError
 
-    def displacement(self, alpha, mode):
+    def displacement(self, r, phi, mode):
         """Apply the displacement operation to the specified mode.
 
         Args:
-            alpha (complex): displacement parameter
+            r (float): displacement amplitude
+            phi(float): displacement angle
             mode (int): which mode to apply the displacement to
         """
         raise NotImplementedError
 
-    def squeeze(self, z, mode):
+    def squeeze(self, r, phi, mode):
         """Apply the squeezing operation to the specified mode.
 
         Args:
-            z (complex): squeezing parameter
+            r (float): squeezing amplitude
+            phi(float): squeezing angle
             mode (int): which mode to apply the squeeze to
         """
         raise NotImplementedError
 
-    def beamsplitter(self, t, r, mode1, mode2):
+    def beamsplitter(self, theta, phi, mode1, mode2):
         """Apply the beamsplitter operation to the specified modes.
 
-        It is assumed that :math:`|r|^2+|t|^2 = t^2+|r|^2=1`, i.e that t is real.
-
         Args:
-            t (float): transmitted amplitude
-            r (complex): reflected amplitude (with phase)
+            theta (float): transmissivity is cos(theta)
+            phi (float): phase angle
             mode1 (int): first mode that beamsplitter acts on
             mode2 (int): second mode that beamsplitter acts on
         """
@@ -491,9 +391,29 @@ class BaseBackend:
     def measure_fock(self, modes, shots=1, select=None, **kwargs):
         """Measure the given modes in the Fock basis.
 
-        ..note::
-          When :code:``shots == 1``, updates the current system state to the conditional state of that
-          measurement result. When :code:``shots > 1``, the system state is not updated.
+        .. note::
+          When ``shots == 1``, updates the current system state to the
+          conditional state of that measurement result. When ``shots > 1``, the
+          system state is not updated.
+
+        Args:
+            modes (Sequence[int]): which modes to measure
+            shots (int): number of measurement samples to obtain
+            select (None or Sequence[int]): If not None: desired values of the measurement results.
+                Enables post-selection on specific measurement results instead of random sampling.
+                ``len(select) == len(modes)`` is required.
+        Returns:
+            tuple[int]: measurement results
+        """
+        raise NotImplementedError
+
+    def measure_threshold(self, modes, shots=1, select=None, **kwargs):
+        """Measure the given modes in the thresholded Fock basis, i.e., zero or nonzero photons).
+
+        .. note::
+
+            When :code:``shots == 1``, updates the current system state to the conditional state of that
+            measurement result. When :code:``shots > 1``, the system state is not updated.
 
         Args:
             modes (Sequence[int]): which modes to measure
@@ -536,12 +456,15 @@ class BaseBackend:
         raise NotImplementedError
 
 
-#=============================
+# =============================
 # Fock-basis backends
-#=============================
+# =============================
+
 
 class BaseFock(BaseBackend):
     """Abstract base class for backends capable of Fock state manipulation."""
+
+    compiler = "fock"
 
     def __init__(self):
         super().__init__()
@@ -605,7 +528,6 @@ class BaseFock(BaseBackend):
                 into mode 1 of the simulator.
         """
         raise NotImplementedError
-
 
     def cubic_phase(self, gamma, mode):
         r"""Apply the cubic phase operation to the specified mode.
@@ -671,12 +593,16 @@ class BaseFock(BaseBackend):
         """
         raise NotImplementedError
 
-#==============================
+
+# ==============================
 # Gaussian-formulation backends
-#==============================
+# ==============================
+
 
 class BaseGaussian(BaseBackend):
     """Abstract base class for backends that are only capable of Gaussian state manipulation."""
+
+    compiler = "gaussian"
 
     def __init__(self):
         super().__init__()

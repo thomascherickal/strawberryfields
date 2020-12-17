@@ -23,7 +23,8 @@ import strawberryfields as sf
 
 from strawberryfields import program
 from strawberryfields import ops
-from strawberryfields.circuitspecs.circuit_specs import CircuitSpecs
+from strawberryfields.parameters import ParameterError, FreeParameter
+from strawberryfields.compilers.compiler import Compiler
 
 
 # make test deterministic
@@ -67,7 +68,7 @@ class TestProgram:
         assert len(prog) == 0
 
         with prog.context as q:
-            ops.Dgate(0.5) | q[0]
+            ops.Dgate(0.5, 0.0) | q[0]
         # now there is one gate in the queue
         assert len(prog) == 1
 
@@ -77,7 +78,7 @@ class TestProgram:
 
     def test_parent_program(self):
         """Continuing one program with another."""
-        D = ops.Dgate(0.5)
+        D = ops.Dgate(0.5, 0.0)
         prog = sf.Program(3)
         with prog.context as q:
             D | q[1]
@@ -106,7 +107,7 @@ class TestProgram:
         assert res == []
 
         # define some gates
-        D = ops.Dgate(0.5)
+        D = ops.Dgate(0.5, 0.0)
         BS = ops.BSgate(2 * np.pi, np.pi / 2)
         R = ops.Rgate(np.pi)
 
@@ -119,7 +120,7 @@ class TestProgram:
             charlie, = ops.New(1)
             BS | (bob, charlie)
             ops.MeasureX | bob
-            ops.Dgate(bob).H | charlie
+            ops.Dgate(bob.par).H | charlie
             ops.Del | bob
             ops.MeasureX | charlie
 
@@ -134,7 +135,7 @@ class TestProgram:
             "New(1)",
             "BSgate(6.283, 1.571) | (q[1], q[2])",
             "MeasureX | (q[1])",
-            "Dgate(RR(q[1]), 0).H | (q[2])",
+            "Dgate(q1, 0).H | (q[2])",
             "Del | (q[1])",
             "MeasureX | (q[2])",
         ]
@@ -147,6 +148,60 @@ class TestProgram:
         eng.print_applied(print_fn)
         assert res == ["Run 0:"] + expected
 
+    def test_params(self, prog):
+        """Creating and retrieving free parameters."""
+        assert not prog.free_params  # no free params to start with
+
+        with pytest.raises(TypeError, match='Parameter names must be strings.'):
+            prog.params(1)
+
+        # creating
+        x = prog.params('a')
+        assert isinstance(x, FreeParameter)
+        assert x.name == 'a'
+        assert len(prog.free_params) == 1
+
+        # retrieving
+        y = prog.params('a')
+        assert y is x
+        assert len(prog.free_params) == 1
+
+        with pytest.raises(TypeError, match='Parameter names must be strings.'):
+            prog.params(x)
+
+        # creating/retrieving multiple
+        names = ('foo', 'bar', 'a')
+        pars = prog.params(*names)
+        assert isinstance(pars, list)
+        for n, p in zip(names, pars):
+            assert isinstance(p, FreeParameter)
+            assert p.name == n
+        assert pars[2] is x  # still the same parameter
+        assert len(prog.free_params) == 3
+
+        # once the program is locked only retrieval is possible
+        prog.lock()
+        with pytest.raises(program.CircuitError, match='The Program is locked, no more free parameters can be created.'):
+            w = prog.params('www')
+        w = prog.params('a')
+        assert w is x
+
+    def test_bind_params(self, prog):
+        """Binding free parameters."""
+
+        with pytest.raises(ParameterError, match='Unknown free parameter'):
+            prog.bind_params({'x': 0})
+
+        x, y = prog.params('x', 'y')
+        # bind some params using parameter name
+        prog.bind_params({'x': 1.0})
+        assert x.val == 1.0
+        assert y.val is None
+        # bind using the parameter itself
+        prog.bind_params({x: 2.0})
+        assert x.val == 2.0
+        assert y.val is None
+
 
 class TestRegRefs:
     """Testing register references."""
@@ -156,45 +211,45 @@ class TestRegRefs:
         with prog.context as q:
             q[0].ind = 1
             with pytest.raises(program.RegRefError, match="RegRef state has become inconsistent"):
-                ops.Dgate(0.5) | q[0]
+                ops.Dgate(0.5, 0.0) | q[0]
 
     def test_nonexistent_index(self, prog):
         """Acting on a non-existent mode raises an error."""
         with prog.context as q:
             with pytest.raises(IndexError):
-                ops.Dgate(0.5) | q[3]
+                ops.Dgate(0.5, 0.0) | q[3]
             with pytest.raises(program.RegRefError, match="does not exist"):
-                ops.Dgate(0.5) | 3
+                ops.Dgate(0.5, 0.0) | 3
 
     def test_deleted_index(self, prog):
         """Test that acting on a deleted mode raises an error"""
         with prog.context as q:
             ops.Del | q[0]
             with pytest.raises(program.RegRefError, match="been deleted"):
-                ops.Dgate(0.5) | 0
+                ops.Dgate(0.5, 0.0) | 0
 
             with pytest.raises(program.RegRefError, match="been deleted"):
-                ops.Dgate(0.5) | q[0]
+                ops.Dgate(0.5, 0.0) | q[0]
 
     def test_unknown_regref(self, prog):
         """Applying an operation on a RegRef not belonging to the program."""
         r = program.RegRef(3)
         with prog.context:
             with pytest.raises(program.RegRefError, match="Unknown RegRef."):
-                ops.Dgate(0.5) | r
+                ops.Dgate(0.5, 0.0) | r
 
     def test_invalid_measurement(self, eng, prog):
         """Cannot use a measurement before it exists."""
         with prog.context as q:
-            ops.Dgate(q[0]) | q[1]
-        with pytest.raises(program.CircuitError, match="nonexistent measurement result"):
+            ops.Dgate(q[0].par, 0.0) | q[1]
+        with pytest.raises(ParameterError, match="nonexistent measurement result"):
             eng.run(prog)
 
     def test_invalid_regref(self, prog):
         """Cannot refer to a register with a non-integral or RegRef object."""
         with prog.context:
             with pytest.raises(program.RegRefError, match="using integers and RegRefs"):
-                ops.Dgate(0) | 1.2
+                ops.Dgate(0, 0) | 1.2
 
     def test_regref_val(self, eng, prog):
         """RegRefs storing measured values."""
@@ -311,47 +366,124 @@ class TestValidation:
         with prog.context as q:
             ops.MeasureFock() | q
 
-        with pytest.raises(ValueError, match="Could not find target 'foo' in the Strawberry Fields circuit database"):
-            new_prog = prog.compile(target='foo')
+        with pytest.raises(ValueError, match="Unknown compiler 'foo'"):
+            new_prog = prog.compile(compiler='foo')
 
     def test_disconnected_circuit(self):
         """Test the detection of a disconnected circuit."""
         prog = sf.Program(3)
         with prog.context as q:
             ops.S2gate(0.6) | q[0:2]
-            ops.Dgate(1.0)  | q[2]
+            ops.Dgate(1.0, 0.0)  | q[2]
             ops.MeasureFock() | q[0:2]
             ops.MeasureX | q[2]
 
         with pytest.warns(UserWarning, match='The circuit consists of 2 disconnected components.'):
-            new_prog = prog.compile(target='fock')
+            new_prog = prog.compile(compiler='fock')
 
     def test_incorrect_modes(self):
-        """Test that an exception is raised if the circuit spec
-        is called with the incorrect number of modes"""
+        """Test that an exception is raised if the compiler
+        is called with a device spec with an incorrect number of modes"""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             """A circuit with 2 modes"""
-            modes = 2
-            remote = False
-            local = True
             interactive = True
             primitives = {'S2gate', 'Interferometer'}
             decompositions = set()
+
+        device_dict = {"modes": 2, "layout": None, "gate_parameters": None, "compiler": [None]}
+        spec = sf.api.DeviceSpec(target=None, connection=None, spec=device_dict)
 
         prog = sf.Program(3)
         with prog.context as q:
             ops.S2gate(0.6) | [q[0], q[1]]
             ops.S2gate(0.6) | [q[1], q[2]]
 
-        with pytest.raises(program.CircuitError, match="requires 3 modes"):
-            new_prog = prog.compile(target=DummyCircuit())
+        with pytest.raises(program.CircuitError, match="program contains 3 modes, but the device 'None' only supports a 2-mode program"):
+            new_prog = prog.compile(device=spec, compiler=DummyCircuit())
+
+    def test_no_default_compiler(self):
+        """Test that an exception is raised if the DeviceSpec has no compilers
+        specified (and thus no default compiler)"""
+
+        device_dict = {"modes": 3, "layout": None, "gate_parameters": None, "compiler": [None]}
+        spec = sf.api.DeviceSpec(target="dummy_target", connection=None, spec=device_dict)
+
+        prog = sf.Program(3)
+        with prog.context as q:
+            ops.S2gate(0.6) | [q[0], q[1]]
+            ops.S2gate(0.6) | [q[1], q[2]]
+
+        with pytest.raises(program.CircuitError, match="does not specify a compiler."):
+            new_prog = prog.compile(device=spec)
+
+    def test_run_optimizations(self):
+        """Test that circuit is optimized when optimize is True"""
+
+        class DummyCircuit(Compiler):
+            """A circuit with 2 modes"""
+            interactive = True
+            primitives = {'Rgate'}
+            decompositions = set()
+
+        device_dict = {"modes": 3, "layout": None, "gate_parameters": None, "compiler": [None]}
+        spec = sf.api.DeviceSpec(target="dummy_target", connection=None, spec=device_dict)
+
+        prog = sf.Program(3)
+        with prog.context as q:
+            ops.Rgate(0.3) | q[0]
+            ops.Rgate(0.4) | q[0]
+
+        new_prog = prog.compile(
+            compiler=DummyCircuit(),
+            optimize=True,
+        )
+        assert new_prog.circuit[0].__str__() == "Rgate(0.7) | (q[0])"
+
+    def test_validate_parameters(self):
+        """Test that the parameters are validated in the compile method"""
+        mock_layout = textwrap.dedent(
+            """\
+            name mock
+            version 1.0
+
+            S2gate({squeezing_amplitude_0}, 0.0) | [0, 1]
+            """
+        )
+
+        device_dict = {
+            "layout": mock_layout,
+            "modes": 2,
+            "compiler": [],
+            "gate_parameters": {
+                "squeezing_amplitude_0": [0, 1],
+            },
+        }
+
+        class DummyCircuit(Compiler):
+            """A circuit with 2 modes"""
+            interactive = True
+            primitives = {'S2gate'}
+            decompositions = set()
+
+        spec = sf.api.DeviceSpec(target=None, spec=device_dict, connection=None)
+
+        prog = sf.Program(2)
+        with prog.context as q:
+            ops.S2gate(1.5) | q  # invalid value 1.5
+
+        with pytest.raises(ValueError, match="has invalid value"):
+            new_prog = prog.compile(
+                device=spec,
+                compiler=DummyCircuit(),
+            )
+
 
     def test_no_decompositions(self):
         """Test that no decompositions take
         place if the circuit spec doesn't support it."""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             """A circuit spec with no decompositions"""
             modes = None
             remote = False
@@ -366,7 +498,7 @@ class TestValidation:
             ops.S2gate(0.6) | [q[0], q[1]]
             ops.Interferometer(U) | [q[0], q[1]]
 
-        new_prog = prog.compile(target=DummyCircuit())
+        new_prog = prog.compile(compiler=DummyCircuit())
 
         # check compiled program only has two gates
         assert len(new_prog) == 2
@@ -380,7 +512,7 @@ class TestValidation:
         """Test that decompositions take
         place if the circuit spec requests it."""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             modes = None
             remote = False
             local = True
@@ -394,7 +526,7 @@ class TestValidation:
             ops.S2gate(0.6) | [q[0], q[1]]
             ops.Interferometer(U) | [q[0], q[1]]
 
-        new_prog = prog.compile(target=DummyCircuit())
+        new_prog = prog.compile(compiler=DummyCircuit())
 
         # check compiled program now has 5 gates
         # the S2gate should decompose into two BS and two Sgates
@@ -412,7 +544,7 @@ class TestValidation:
         """Test that an exception is raised if the circuit spec
         requests a decomposition that doesn't exist"""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             modes = None
             remote = False
             local = True
@@ -427,7 +559,7 @@ class TestValidation:
             ops.Interferometer(U) | [q[0], q[1]]
 
         with pytest.raises(NotImplementedError, match="No decomposition available: Rgate"):
-            new_prog = prog.compile(target=DummyCircuit())
+            new_prog = prog.compile(compiler=DummyCircuit())
 
     def test_invalid_primitive(self):
         """Test that an exception is raised if the program
@@ -440,8 +572,8 @@ class TestValidation:
         with prog.context as q:
             ops.Kgate(0.6) | q[0]
 
-        with pytest.raises(program.CircuitError, match="Kgate cannot be used with the target"):
-            new_prog = prog.compile(target='gaussian')
+        with pytest.raises(program.CircuitError, match="Kgate cannot be used with the compiler"):
+            new_prog = prog.compile(compiler='gaussian')
 
     def test_user_defined_decomposition_false(self):
         """Test that an operation that is both a primitive AND
@@ -456,14 +588,14 @@ class TestValidation:
         with prog.context as q:
             ops.Gaussian(cov, r, decomp=False) | q
 
-        prog = prog.compile(target='gaussian')
+        prog = prog.compile(compiler='gaussian')
         assert len(prog) == 1
         circuit = prog.circuit
         assert circuit[0].op.__class__.__name__ == "Gaussian"
 
         # test compilation against multiple targets in sequence
-        with pytest.raises(program.CircuitError, match="The operation Gaussian is not a primitive for the target 'fock'"):
-            prog = prog.compile(target='fock')
+        with pytest.raises(program.CircuitError, match="The operation Gaussian is not a primitive for the compiler 'fock'"):
+            prog = prog.compile(compiler='fock')
 
     def test_user_defined_decomposition_true(self):
         """Test that an operation that is both a primitive AND
@@ -479,7 +611,7 @@ class TestValidation:
         with prog.context:
             ops.Gaussian(cov, decomp=True) | 0
 
-        new_prog = prog.compile(target='gaussian')
+        new_prog = prog.compile(compiler='gaussian')
 
         assert len(new_prog) == 1
 
@@ -490,7 +622,7 @@ class TestValidation:
     def test_topology_validation(self):
         """Test compilation properly matches the circuit spec topology"""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             modes = None
             remote = False
             local = True
@@ -517,12 +649,12 @@ class TestValidation:
             # isomorphism of the one provided above
             # in circuit, so should validate.
             ops.MeasureFock() | q[2]
-            ops.Dgate(-7.123) | q[1]
+            ops.Dgate(-7.123, 0.0) | q[1]
             ops.Sgate(0.543) | q[0]
             ops.BSgate(-0.32) | (q[0], q[1])
             ops.MeasureFock() | q[0]
 
-        new_prog = prog.compile(target=DummyCircuit())
+        new_prog = prog.compile(compiler=DummyCircuit())
 
         # no exception should be raised; topology correctly validated
         assert len(new_prog) == 5
@@ -530,7 +662,7 @@ class TestValidation:
     def test_invalid_topology(self):
         """Test compilation raises exception if toplogy not matched"""
 
-        class DummyCircuit(CircuitSpecs):
+        class DummyCircuit(Compiler):
             modes = None
             remote = False
             local = True
@@ -544,7 +676,7 @@ class TestValidation:
                 version 0.0
 
                 Sgate({sq}, 0) | 0
-                Dgate(-7.123) | 1
+                Dgate(-7.123, 0) | 1
                 BSgate({theta}) | 0, 1
                 MeasureFock() | 0
                 MeasureFock() | 2
@@ -558,13 +690,13 @@ class TestValidation:
             # in circuit, as the Sgate
             # comes AFTER the beamsplitter.
             ops.MeasureFock() | q[2]
-            ops.Dgate(-7.123) | q[1]
+            ops.Dgate(-7.123, 0.0) | q[1]
             ops.BSgate(-0.32) | (q[0], q[1])
             ops.Sgate(0.543) | q[0]
             ops.MeasureFock() | q[0]
 
         with pytest.raises(program.CircuitError, match="incompatible topology"):
-            new_prog = prog.compile(target=DummyCircuit())
+            new_prog = prog.compile(compiler=DummyCircuit())
 
 
 class TestGBS:
@@ -578,41 +710,41 @@ class TestGBS:
             ops.Rgate(1.0)  | q[0]
 
         with pytest.raises(program.CircuitError, match="Operations following the Fock measurements."):
-            prog.compile('gbs')
+            prog.compile(compiler='gbs')
 
     def test_GBS_compile_no_fock_meas(self):
         """Tests that GBS compilation fails when no fock measurements are made."""
         prog = sf.Program(2)
         with prog.context as q:
-            ops.Dgate(1.0) | q[0]
+            ops.Dgate(1.0, 0.0) | q[0]
             ops.Sgate(-0.5) | q[1]
 
         with pytest.raises(program.CircuitError, match="GBS circuits must contain Fock measurements."):
-            prog.compile('gbs')
+            prog.compile(compiler='gbs')
 
     def test_GBS_compile_nonconsec_measurefock(self):
         """Tests that GBS compilation fails when Fock measurements are made with an intervening gate."""
         prog = sf.Program(2)
         with prog.context as q:
-            ops.Dgate(1.0) | q[0]
+            ops.Dgate(1.0, 0.0) | q[0]
             ops.MeasureFock() | q[0]
-            ops.Dgate(-1.0) | q[1]
+            ops.Dgate(-1.0, 0.0) | q[1]
             ops.BSgate(-0.5, 2.0) | q  # intervening gate
             ops.MeasureFock() | q[1]
 
         with pytest.raises(program.CircuitError, match="The Fock measurements are not consecutive."):
-            prog.compile('gbs')
+            prog.compile(compiler='gbs')
 
     def test_GBS_compile_measure_same_twice(self):
         """Tests that GBS compilation fails when the same mode is measured more than once."""
         prog = sf.Program(3)
         with prog.context as q:
-            ops.Dgate(1.0) | q[0]
+            ops.Dgate(1.0, 0.0) | q[0]
             ops.MeasureFock() | q[0]
             ops.MeasureFock() | q
 
         with pytest.raises(program.CircuitError, match="Measuring the same mode more than once."):
-            prog.compile('gbs')
+            prog.compile(compiler='gbs')
 
     def test_GBS_success(self):
         """GBS check passes."""
@@ -625,7 +757,7 @@ class TestGBS:
             ops.Rgate(-1.0) | q[1]
             ops.MeasureFock() | q[1]
 
-        prog = prog.compile('gbs')
+        prog = prog.compile(compiler='gbs')
         assert len(prog) == 4
         last_cmd = prog.circuit[-1]
         assert isinstance(last_cmd.op, ops.MeasureFock)
@@ -642,7 +774,7 @@ class TestGBS:
             ops.BSgate(0.54, -0.12) | (q[0], q[1])
             ops.MeasureFock() | (q[0], q[3], q[2], q[1])
 
-        prog = prog.compile("gbs")
+        prog = prog.compile(compiler="gbs")
         last_cmd = prog.circuit[-1]
         assert isinstance(last_cmd.op, ops.MeasureFock)
         assert [x.ind for x in last_cmd.reg] == list(range(4))

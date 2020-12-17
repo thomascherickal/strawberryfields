@@ -12,75 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 r"""
-Circuit drawer
-==============
-
 A Strawberry Fields module that provides an object-oriented interface for building
 quantum circuit representations of continuous-variable circuits using the
 :math:`\LaTeX` `Qcircuit package <https://ctan.org/pkg/qcircuit>`_.
-
-The following features of Qcircuit are currently used:
-
-* Loading Q-circuit: ``\input{Qcircuit}``
-* Making Circuits: ``\Qcircuit``
-* Spacing: ``@C=#1`` and ``@R=#1``
-* Wires: ``\qw[#1]``
-* Gates: ``\gate {#1}``, ``\targ``, and ``\qswap``
-* Control: ``\ctrl{#1}``
-
-The drawing of the following Xanadu supported operations are currently supported:
-
-.. rst-class:: docstable
-
-+-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|     Gate type     |                                                                            Supported gates                                                                             |
-+===================+========================================================================================================================================================================+
-| Single mode gates | :class:`~.Dgate`, :class:`~.Xgate`, :class:`~.Zgate`, :class:`~.Sgate`, :class:`~.Rgate`, :class:`~.Pgate`, :class:`~.Vgate`, :class:`~.Kgate`, :class:`~.Fouriergate` |
-+-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Two mode gates    | :class:`~.BSgate`, :class:`~.S2gate`, :class:`~.CXgate`, :class:`~.CZgate`, :class:`~.CKgate`                                                                          |
-+-------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-.. note:: Measurement operations :class:`~.MeasureHomodyne`, :class:`~.MeasureHeterodyne`, and :class:`~.MeasureFock` are not currently supported.
-
-
-Example
--------
-
-
-
-
-Circuit drawer methods
-----------------------
-
-.. currentmodule:: strawberryfields.circuitdrawer.Circuit
-
-.. autosummary::
-   _gate_from_operator
-   parse_op
-   _single_mode_gate
-   _multi_mode_gate
-   _controlled_mode_gate
-   _on_empty_column
-   _add_column
-   _is_empty
-   _set_column_spacing
-   _set_row_spacing
-   _pad_with_spaces
-   dump_to_document
-   compile_document
-   _init_document
-   _end_document
-   _begin_circuit
-   _end_circuit
-   _end_wire
-   _apply_spacing
-    _write_operation_to_document
-
-.. currentmodule:: strawberryfields.circuitdrawer
-
-
-Code details
-^^^^^^^^^^^^
 """
 import datetime
 import os
@@ -89,6 +23,7 @@ import os
 # to transform Strawberry Fields operators to latex code.
 
 DOCUMENT_CLASS = r"\documentclass{article}"
+EMPTY_PAGESTYLE = r"\pagestyle{empty}"
 QCIRCUIT_PACKAGE = r"\usepackage{qcircuit}"
 BEGIN_DOCUMENT = r"\begin{document}"
 DOCUMENT_END = r"\end{document}"
@@ -149,7 +84,15 @@ WIRE_TERMINATOR = r"\\" + "\n"
 CIRCUIT_BODY_TERMINATOR = "}\n"
 CIRCUIT_BODY_START = " {" + "\n"
 INIT_DOCUMENT = (
-    DOCUMENT_CLASS + "\n" + QCIRCUIT_PACKAGE + "\n" + BEGIN_DOCUMENT + "\n" + CIRCUIT_START
+    DOCUMENT_CLASS
+    + "\n"
+    + EMPTY_PAGESTYLE
+    + "\n"
+    + QCIRCUIT_PACKAGE
+    + "\n"
+    + BEGIN_DOCUMENT
+    + "\n"
+    + CIRCUIT_START
 )
 
 PIPE = "|"
@@ -611,9 +554,7 @@ class Circuit:
     def _apply_spacing(self):
         """Applies wire and operator visual spacing."""
         if self._column_spacing is not None:
-            self._document += Circuit._pad_with_spaces(
-                COLUMN_SPACING.format(self._column_spacing)
-            )
+            self._document += Circuit._pad_with_spaces(COLUMN_SPACING.format(self._column_spacing))
         if self._row_spacing is not None:
             self._document += Circuit._pad_with_spaces(ROW_SPACING.format(self._row_spacing))
 

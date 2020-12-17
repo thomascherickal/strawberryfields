@@ -11,63 +11,60 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#!/usr/bin/env python3
-import sys
 import os
-from setuptools import setup
-# from sphinx.setup_command import BuildDoc
+import sys
+
+from setuptools import setup, find_packages
+
 
 with open("strawberryfields/_version.py") as f:
-	version = f.readlines()[-1].split()[-1].strip("\"'")
+    version = f.readlines()[-1].split()[-1].strip("\"'")
 
-# cmdclass = {'build_docs': BuildDoc}
 
 requirements = [
-    "numpy>=1.16.3",
+    "numpy>=1.17.4",
     "scipy>=1.0.0",
+    "sympy>=1.5",
     "networkx>=2.0",
-    "quantum-blackbird>=0.2.0",
-    "hafnian>=0.6",
+    "quantum-blackbird>=0.3.0",
+    "python-dateutil>=2.8.0",
+    "thewalrus>=0.14.0",
+    "numba",
     "toml",
-    "appdirs"
+    "appdirs",
+    "requests>=2.22.0",
+    "urllib3>=1.25.3",
 ]
 
-# extra_requirements = [
-#     "tf": ["tensorflow>=1.3.0,<1.7"],
-#     "tf_gpu": ["tensorflow-gpu>=1.3.0,<1.7"]
-# ]
-
 info = {
-    'name': 'StrawberryFields',
-    'version': version,
-    'maintainer': 'Xanadu Inc.',
-    'maintainer_email': 'nathan@xanadu.ai',
-    'url': 'http://xanadu.ai',
-    'license': 'Apache License 2.0',
-    'packages': [
-                    'strawberryfields',
-                    'strawberryfields.circuitspecs',
-                    'strawberryfields.backends',
-                    'strawberryfields.backends.tfbackend',
-                    'strawberryfields.backends.fockbackend',
-                    'strawberryfields.backends.gaussianbackend'
-                ],
-    'package_data': {'strawberryfields': ['backends/data/*']},
-    'include_package_data': True,
-    'description': 'Open source library for continuous-variable quantum computation',
-    'long_description': open('README.rst', encoding='utf-8').read(),
-    'provides': ["strawberryfields"],
-    'install_requires': requirements,
+    "name": "StrawberryFields",
+    "version": version,
+    "maintainer": "Xanadu Inc.",
+    "maintainer_email": "software@xanadu.ai",
+    "url": "https://github.com/XanaduAI/StrawberryFields",
+    "license": "Apache License 2.0",
+    "packages": find_packages(where="."),
+    "package_data": {"strawberryfields": ["backends/data/*", "apps/data/feature_data/*",
+                                          "apps/data/sample_data/*"]},
+    "include_package_data": True,
+    "entry_points" : {
+        'console_scripts': [
+            'sf=strawberryfields.cli:main'
+        ]
+    },
+    "description": "Open source library for continuous-variable quantum computation",
+    "long_description": open("README.rst", encoding="utf-8").read(),
+    "long_description_content_type": "text/x-rst",
+    "provides": ["strawberryfields"],
+    "install_requires": requirements,
     # 'extras_require': extra_requirements,
-    'command_options': {
-        'build_sphinx': {
-            'version': ('setup.py', version),
-            'release': ('setup.py', version)}}
+    "command_options": {
+        "build_sphinx": {"version": ("setup.py", version), "release": ("setup.py", version)}
+    },
 }
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
@@ -77,11 +74,12 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python",
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3 :: Only',
-    "Topic :: Scientific/Engineering :: Physics"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Physics",
 ]
 
 setup(classifiers=classifiers, **(info))

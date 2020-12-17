@@ -20,8 +20,7 @@ import strawberryfields as sf
 from strawberryfields import ops
 
 from strawberryfields.backends import BaseGaussian
-from strawberryfields.backends.states import BaseFockState
-from strawberryfields.backends.gaussianbackend import GaussianState
+from strawberryfields.backends.states import BaseFockState, BaseGaussianState
 
 
 # make test deterministic
@@ -76,7 +75,7 @@ class TestChannelApplication:
         eng, prog = setup_eng(1)
 
         with prog.context as q:
-            ops.Dgate(A) | q[0]
+            ops.Dgate(np.abs(A), np.angle(A)) | q[0]
             ops.LossChannel(0) | q[0]
 
         eng.run(prog)
@@ -89,7 +88,7 @@ class TestChannelApplication:
         nbar = 0.43
 
         with prog.context as q:
-            ops.Dgate(A) | q[0]
+            ops.Dgate(np.abs(A), np.angle(A)) | q[0]
             ops.ThermalLossChannel(0, nbar) | q[0]
 
         state = eng.run(prog).state
@@ -110,7 +109,7 @@ class TestPreparationApplication:
         eng, prog = setup_eng(1)
 
         with prog.context as q:
-            ops.Dgate(0.2) | q[0]
+            ops.Dgate(0.2, 0.0) | q[0]
 
         state1 = eng.run(prog).state
 
@@ -148,7 +147,7 @@ class TestPreparationApplication:
         eng, prog = setup_eng(1)
 
         with prog.context as q:
-            ops.Dgate(0.2) | q[0]
+            ops.Dgate(0.2, 0.0) | q[0]
 
         state1 = eng.run(prog).state
 
@@ -165,7 +164,7 @@ class TestPreparationApplication:
         eng, prog = setup_eng(1)
 
         with prog.context as q:
-            ops.Dgate(0.2) | q[0]
+            ops.Dgate(0.2, 0.0) | q[0]
 
         state1 = eng.run(prog).state
 
@@ -203,7 +202,7 @@ class TestKetDensityMatrixIntegration:
         """Test exceptions"""
         mu = np.array([0.0, 0.0])
         cov = np.identity(2)
-        state1 = GaussianState((mu, cov), 1, None, None)
+        state1 = BaseGaussianState((mu, cov), 1)
         state2 = BaseFockState(np.zeros(cutoff), 1, False, cutoff)
 
         eng, prog = setup_eng(2)
@@ -221,7 +220,7 @@ class TestKetDensityMatrixIntegration:
         ket0 = ket0 / np.linalg.norm(ket0)
         with prog.context as q:
             ops.Ket(ket0) | q[0]
-        state = eng.run(prog, run_options={'modes': [0]}).state
+        state = eng.run(prog, **{'modes': [0]}).state
         assert np.allclose(state.dm(), np.outer(ket0, ket0.conj()), atol=tol, rtol=0)
 
         eng.reset()
@@ -230,7 +229,7 @@ class TestKetDensityMatrixIntegration:
         state1 = BaseFockState(ket0, 1, True, cutoff)
         with prog.context as q:
             ops.Ket(state1) | q[0]
-        state2 = eng.run(prog, run_options={'modes': [0]}).state
+        state2 = eng.run(prog, **{'modes': [0]}).state
         assert np.allclose(state1.dm(), state2.dm(), atol=tol, rtol=0)
 
     def test_ket_two_mode(self, setup_eng, hbar, cutoff, tol):
@@ -262,7 +261,7 @@ class TestKetDensityMatrixIntegration:
         """Test exceptions"""
         mu = np.array([0.0, 0.0])
         cov = np.identity(2)
-        state = GaussianState((mu, cov), 1, None, None)
+        state = BaseGaussianState((mu, cov), 1)
 
         eng, prog = setup_eng(2)
 
@@ -279,7 +278,7 @@ class TestKetDensityMatrixIntegration:
         rho = np.outer(ket, ket.conj())
         with prog.context as q:
             ops.DensityMatrix(rho) | q[0]
-        state = eng.run(prog, run_options={'modes': [0]}).state
+        state = eng.run(prog, **{'modes': [0]}).state
         assert np.allclose(state.dm(), rho, atol=tol, rtol=0)
 
         eng.reset()
@@ -288,7 +287,7 @@ class TestKetDensityMatrixIntegration:
         state1 = BaseFockState(rho, 1, False, cutoff)
         with prog.context as q:
             ops.DensityMatrix(state1) | q[0]
-        state2 = eng.run(prog, run_options={'modes': [0]}).state
+        state2 = eng.run(prog, **{'modes': [0]}).state
         assert np.allclose(state1.dm(), state2.dm(), atol=tol, rtol=0)
 
     def test_dm_two_mode(self, setup_eng, hbar, cutoff, tol):

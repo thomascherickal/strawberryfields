@@ -44,11 +44,14 @@ class TestMeasurement:
     def test_heterodyne(self, setup_eng, tol):
         """Test Fock measurements return expected results"""
         eng, prog = setup_eng(2)
-        a = [0.43 - 0.12j, 0.02 + 0.2j]
+        a0 = 0.44643
+        phi0 = -0.2721457
+        a1 = 0.200998
+        phi1 = 1.47112755
 
         with prog.context as q:
-            ops.Coherent(a[0]) | q[0]
-            ops.Coherent(a[1]) | q[1]
+            ops.Coherent(a0, phi0) | q[0]
+            ops.Coherent(a1, phi1) | q[1]
             ops.MeasureHD | q[0]
             ops.MeasureHD | q[1]
 
@@ -130,3 +133,99 @@ class TestPostselection:
         n_mean_tot = np.trace(cov / (hbar / 2) - np.identity(4)) / 4
         expected = 2 * n_mean_per_mode
         assert np.allclose(n_mean_tot, expected)
+
+
+    @pytest.mark.backends("gaussian")
+    def test_coherent_state_has_photons(self, setup_eng, hbar):
+        """Test that a coherent state with a mean photon number of 4 and sampled 100 times will produce photons"""
+        shots = 100
+        eng, prog = setup_eng(1)
+        alpha = 2
+        with prog.context as q:
+            ops.Coherent(alpha) | q[0]
+            ops.MeasureFock() | q[0]
+        state = eng.run(prog).state
+        samples = np.array(eng.run(prog, shots=shots)).flatten()
+
+        assert not np.all(samples == np.zeros_like(samples, dtype=int))
+
+
+class TestDarkCounts:
+    @pytest.mark.backends("fock")
+    @pytest.mark.parametrize("dark_counts", [[4, 2], [3, 0], [0, 6]])
+    def test_fock_darkcounts_two_modes(self, dark_counts, setup_eng, monkeypatch):
+        """Test Fock measurements return expected results with dark counts on all detectors"""
+        with monkeypatch.context() as m:
+            # add the number of dark counts instead of sampling from a poisson distribution
+            m.setattr(np.random, "poisson", lambda dc, shape: dc * np.ones(shape, dtype=int))
+
+            eng, prog = setup_eng(2)
+            n = [2, 1]
+
+            with prog.context as q:
+                ops.Fock(n[0]) | q[0]
+                ops.Fock(n[1]) | q[1]
+                ops.MeasureFock(dark_counts=dark_counts) | q
+
+            eng.run(prog)
+            assert q[0].val == n[0] + dark_counts[0]
+            assert q[1].val == n[1] + dark_counts[1]
+
+    @pytest.mark.backends("fock")
+    @pytest.mark.parametrize("dark_counts", [[4], 6, 0, [0]])
+    def test_fock_darkcounts_single_mode(self, dark_counts, setup_eng, monkeypatch):
+        """Test Fock measurements return expected results with dark counts on one detector"""
+        with monkeypatch.context() as m:
+            m.setattr(np.random, "poisson", lambda dc, shape: dc * np.ones(shape, dtype=int))
+
+            eng, prog = setup_eng(2)
+            n = [2, 1]
+
+            with prog.context as q:
+                ops.Fock(n[0]) | q[0]
+                ops.Fock(n[1]) | q[1]
+                ops.MeasureFock(dark_counts=dark_counts) | q[0]
+                ops.MeasureFock() | q[1]
+
+            eng.run(prog)
+
+            if isinstance(dark_counts, int):
+                dark_counts = [dark_counts]
+
+            assert q[0].val == n[0] + dark_counts[0]
+            assert q[1].val == n[1]
+
+    @pytest.mark.backends("fock")
+    @pytest.mark.parametrize("dark_counts", [[3], 6, [4, 2, 1]])
+    def test_fock_darkcounts_errors(self, dark_counts, setup_eng):
+        """Test Fock measurements errors when applying dark counts to more/less detectors than measured"""
+
+        eng, prog = setup_eng(2)
+        n = [2, 1]
+
+        with prog.context as q:
+            ops.Fock(n[0]) | q[0]
+            ops.Fock(n[1]) | q[1]
+            ops.MeasureFock(dark_counts=dark_counts) | q
+
+        with pytest.raises(
+                ValueError,
+                match="The number of dark counts must be equal to the number of measured modes",
+            ):
+            eng.run(prog)
+
+    @pytest.mark.backends("fock")
+    def test_fock_darkcounts_with_postselection(self, setup_eng):
+        """Test Fock measurements error when using dark counts together with post-selection"""
+
+        eng, prog = setup_eng(2)
+        n = [2, 1]
+
+        with prog.context as q:
+            ops.Fock(n[0]) | q[0]
+            ops.Fock(n[1]) | q[1]
+            with pytest.raises(
+                    NotImplementedError,
+                    match="Post-selection cannot be used together with dark counts",
+                ):
+                ops.MeasureFock(select=1, dark_counts=2) | q

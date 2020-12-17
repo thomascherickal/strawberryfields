@@ -3,121 +3,118 @@
 
 ##################################################
 
-.. image:: https://img.shields.io/travis/XanaduAI/strawberryfields/master.svg?style=for-the-badge
-    :alt: Travis
-    :target: https://travis-ci.org/XanaduAI/strawberryfields
+.. image:: https://img.shields.io/github/workflow/status/XanaduAI/strawberryfields/Tests/master?logo=github&style=flat-square
+    :alt: GitHub Workflow Status (branch)
+    :target: https://github.com/XanaduAI/strawberryfields/actions?query=workflow%3ATests
 
-.. image:: https://img.shields.io/codecov/c/github/xanaduai/strawberryfields/master.svg?style=for-the-badge
+.. image:: https://img.shields.io/codecov/c/github/xanaduai/strawberryfields/master.svg?style=popout-square
     :alt: Codecov coverage
     :target: https://codecov.io/gh/XanaduAI/strawberryfields
 
-.. image:: https://img.shields.io/codacy/grade/bd14437d17494f16ada064d8026498dd.svg?style=for-the-badge
-    :alt: Codacy grade
-    :target: https://app.codacy.com/app/XanaduAI/strawberryfields?utm_source=github.com&utm_medium=referral&utm_content=XanaduAI/strawberryfields&utm_campaign=badger
+.. image:: https://img.shields.io/codefactor/grade/github/XanaduAI/strawberryfields/master?style=flat-square
+    :alt: CodeFactor Grade
+    :target: https://www.codefactor.io/repository/github/xanaduai/strawberryfields
 
-.. image:: https://img.shields.io/readthedocs/strawberryfields.svg?style=for-the-badge
+.. image:: https://img.shields.io/readthedocs/strawberryfields.svg?style=popout-square
     :alt: Read the Docs
     :target: https://strawberryfields.readthedocs.io
 
-.. image:: https://img.shields.io/pypi/v/StrawberryFields.svg?style=for-the-badge
+.. image:: https://img.shields.io/pypi/v/StrawberryFields.svg?style=popout-square
     :alt: PyPI
     :target: https://pypi.org/project/StrawberryFields
 
-.. image:: https://img.shields.io/pypi/pyversions/StrawberryFields.svg?style=for-the-badge
+.. image:: https://img.shields.io/pypi/pyversions/StrawberryFields.svg?style=popout-square
     :alt: PyPI - Python Version
     :target: https://pypi.org/project/StrawberryFields
 
 `Strawberry Fields <https://strawberryfields.readthedocs.io>`_ is a full-stack Python library for designing,
-simulating, and optimizing continuous variable quantum
+simulating, and optimizing continuous-variable quantum
 optical circuits.
 
 
 Features
 ========
 
-* An open-source software architecture for **photonic quantum computing**
+.. raw:: html
 
-* A **full-stack** quantum software platform, implemented in Python specifically targeted to the CV model
+    <img src="https://raw.githubusercontent.com/XanaduAI/strawberryfields/master/doc/_static/StateLearning.gif" width="300px"  align="right">
 
-* Quantum circuits are written using the easy-to-use and intuitive **Blackbird quantum programming language**
+* Execute photonic quantum algorithms directly on `Xanadu's next-generation quantum hardware
+  <https://strawberryfields.ai/photonics/hardware/index.html>`__
 
-* Includes a suite of CV **quantum computer simulators** implemented using **NumPy** and **TensorFlow** - these built-in quantum compiler tools convert and optimize Blackbird code for classical simulation
+* `High-level functions <https://strawberryfields.ai/photonics/applications.html>`__ for **solving
+  practical problems** including **graph and network optimization**, **machine learning**, and
+  **chemistry**
 
-* Future releases will aim to target experimental backends, including **photonic quantum computing chips**
+* Includes a suite of world-class simulators—based on cutting-edge algorithms—to compile and
+  simulate photonic algorithms
+
+* `Train and optimize
+  <https://strawberryfields.ai/photonics/demonstrations.html#optimization-and-machine-learning>`__
+  your quantum programs with our end-to-end differentiable TensorFlow backend
+
+* Powers the `Strawberry Fields Interactive <https://strawberryfields.ai>`_ web app, which allows
+  anyone to run a quantum computing simulation via **drag and drop**
 
 
 Installation
 ============
 
-Strawberry Fields requires Python version 3.5+. Installation of Strawberry Fields, as well as all dependencies, can be done using pip:
+Strawberry Fields requires Python version 3.6, 3.7, or 3.8. Installation of Strawberry Fields, as well as all dependencies, can be done using pip:
 
 .. code-block:: bash
 
     pip install strawberryfields
 
 
-TensorFlow support
-------------------
-
-To use Strawberry Fields with TensorFlow, version 1.3 of
-TensorFlow is required. This can be installed alongside Strawberry Fields
-as follows:
-
-.. code-block:: console
-
-    pip install strawberryfields tensorflow==1.3
-
-Or, to install Strawberry Fields and TensorFlow with GPU and CUDA support:
-
-.. code-block:: console
-
-    pip install strawberryfields tensorflow-gpu==1.3
-
-
-Note that TensorFlow version 1.3 is only supported on Python versions
-less than 3.7.
-
-
 Getting started
 ===============
 
-To see Strawberry Fields in action immediately, try out our `Strawberry Fields Interactive <https://strawberryfields.ai>`_ web application. Prepare your initial states, drag and drop gates, and watch your simulation run in real time right in your web browser.
+To see Strawberry Fields in action immediately, try out our `Strawberry Fields Interactive
+<https://strawberryfields.ai>`_ web application. Prepare your initial states, drag and drop gates,
+and watch your simulation run in real time right in your web browser.
 
-For getting started with writing your own Strawberry Fields code, check out our `quantum teleportation <https://strawberryfields.readthedocs.io/en/latest/tutorials/tutorial_teleportation.html>`_, `boson sampling <https://strawberryfields.readthedocs.io/en/latest/tutorials/tutorial_boson_sampling.html>`_, and `machine learning <https://strawberryfields.readthedocs.io/en/latest/tutorials/tutorial_machine_learning.html>`_ tutorials.
+To get started with writing your own Strawberry Fields code, begin with our `photonic circuit
+quickstart guides
+<https://strawberryfields.readthedocs.io/en/stable/introduction/introduction.html>`__, before
+exploring our many `tutorials <https://strawberryfields.ai/photonics/demonstrations.html>`__ and
+`applications <https://strawberryfields.ai/photonics/applications.html>`__.
 
-Our documentation is also a great starting point to familiarize yourself with the framework of `continuous-variable quantum computation <https://strawberryfields.readthedocs.io/en/latest/introduction.html>`_, and check out some important and interesting continuous-variable `quantum algorithms <https://strawberryfields.readthedocs.io/en/latest/quantum_algorithms.html>`_.
+.. raw:: html
 
-Finally, detailed documentation on the `Strawberry fields API <https://strawberryfields.readthedocs.io/en/latest/code/code.html>`_ is provided, for full details on available quantum operations, arguments, and backends.
+    <a href="https://strawberryfields.ai/photonics/demonstrations.html">
+    <img src="https://raw.githubusercontent.com/XanaduAI/strawberryfields/master/doc/_static/readme_panel1.png" width="900px">
+    </a>
 
+Finally, read more about using Strawberry Fields with `photonic hardware
+<https://strawberryfields.ai/photonics/hardware/index.html>`__, including code demonstrations
+and an overview of Xanadu's quantum photonic hardware.
+
+Developers can head to the `development guide
+<https://strawberryfields.readthedocs.io/en/stable/development/development_guide.html>`_ to see how
+they can contribute to Strawberry Fields.
 
 Contributing to Strawberry Fields
 =================================
 
-We welcome contributions - simply fork the Strawberry Fields repository, and then make a
-`pull request <https://help.github.com/articles/about-pull-requests/>`_ containing your contribution.  All contributers to Strawberry Fields will be listed as authors on the releases.
+We welcome contributions—simply fork the Strawberry Fields repository, and then make a
+`pull request <https://help.github.com/articles/about-pull-requests/>`_ containing your contribution.  All contributors to Strawberry Fields will be listed as authors on the releases.
 
-We also encourage bug reports, suggestions for new features and enhancements, and even links to cool projects or applications built on Strawberry Fields. If your contribution becomes part of Strawberry Fields, or is highlighted in our Gallery, we will send you some exclusive Xanadu Swag™ - including t-shirts, stickers, and more.
-
-Or, submit your Strawberry Fields contribution to the `Xanadu Quantum Software Competition <https://strawberryfields.ai/competition/>`_; there are prizes of up CAD$1000 on offer.
-
-.. raw:: html
-
-    <img src="https://i.imgur.com/xSFMt3g.jpg" width="300px"  align="left"> <img src="https://i.imgur.com/dC0U1xG.jpg" width="300px"  align="left">
+We also encourage bug reports, suggestions for new features and enhancements, and even links to cool projects or applications built on Strawberry Fields.
 
 See our `contributions page <https://github.com/XanaduAI/strawberryfields/blob/master/.github/CONTRIBUTING.md>`_
 for more details, and then check out some of the Strawberry Fields `challenges <https://github.com/XanaduAI/strawberryfields/blob/master/.github/CHALLENGES.md>`_ for some inspiration.
 
-|
-
 Authors
 =======
 
-Nathan Killoran, Josh Izaac, Nicolás Quesada, Ville Bergholm, Matthew Amy, and Christian Weedbrook.
+Strawberry Fields is the work of `many contributors <https://github.com/XanaduAI/strawberryfields/graphs/contributors>`_.
 
-If you are doing research using Strawberry Fields, please cite `our paper <https://quantum-journal.org/papers/q-2019-03-11-129/>`_:
+If you are doing research using Strawberry Fields, please cite our papers:
 
-  Nathan Killoran, Josh Izaac, Nicolás Quesada, Ville Bergholm, Matthew Amy, and Christian Weedbrook. "Strawberry Fields: A Software Platform for Photonic Quantum Computing", Quantum, 3, 129 (2019).
+  Nathan Killoran, Josh Izaac, Nicolás Quesada, Ville Bergholm, Matthew Amy, and Christian Weedbrook. "Strawberry Fields: A Software Platform for Photonic Quantum Computing", `Quantum, 3, 129 <https://quantum-journal.org/papers/q-2019-03-11-129/>`__ (2019).
 
+  Thomas R. Bromley, Juan Miguel Arrazola, Soran Jahangiri, Josh Izaac, Nicolás Quesada, Alain Delgado Gran, Maria Schuld, Jeremy Swinarton, Zeid Zabaneh, and Nathan Killoran. "Applications of Near-Term Photonic Quantum Computers: Software and Algorithms", `Quantum Sci. Technol. 5 034010 <https://iopscience.iop.org/article/10.1088/2058-9565/ab8504/meta>`__ (2020).
 
 Support
 =======
@@ -127,7 +124,7 @@ Support
 
 If you are having issues, please let us know by posting the issue on our Github issue tracker.
 
-We also have a `Strawberry Fields Slack channel <https://u.strawberryfields.ai/slack>`_ -
+We also have a `Slack channel <https://u.strawberryfields.ai/slack>`_ and a `discussion forum <https://discuss.pennylane.ai>`_ -
 come join the discussion and chat with our Strawberry Fields team.
 
 
